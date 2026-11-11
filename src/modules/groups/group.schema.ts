@@ -13,3 +13,13 @@ export const createGroupSchema = z.object({
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+
+export const addGroupMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+});
+
+export type AddGroupMemberInput = z.infer<typeof addGroupMemberSchema>;
+
+export const groupParamsSchema = z.object({
+  groupId: z.uuid("Group ID must be a valid UUID"),
+});

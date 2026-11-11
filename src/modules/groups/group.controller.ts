@@ -1,8 +1,15 @@
 import type { RequestHandler } from "express";
-import { createGroupSchema } from "./group.schema.js";
 import {
+  addGroupMemberSchema,
+  createGroupSchema,
+  groupParamsSchema,
+} from "./group.schema.js";
+import {
+  addGroupMember,
   createGroup,
+  GroupMembershipError,
   GroupServiceError,
+  listGroupMembers,
   listMyGroups,
 } from "./group.service.js";
 
@@ -70,6 +77,124 @@ export const listMyGroupsController: RequestHandler = async (
       data: groups,
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+function handleGroupMembershipError(
+  error: GroupMembershipError,
+  res: Parameters<RequestHandler>[1],
+) {
+  const statusByCode: Record<GroupMembershipError["code"], number> = {
+    GROUP_NOT_FOUND: 404,
+    GROUP_ARCHIVED: 409,
+    FORBIDDEN: 403,
+    USER_NOT_FOUND: 404,
+    USER_INACTIVE: 403,
+    ALREADY_MEMBER: 409,
+  };
+
+  res.status(statusByCode[error.code]).json({
+    message: error.message,
+  });
+}
+
+export const addGroupMemberController: RequestHandler<{
+  groupId: string;
+}> = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const actorUserId = req.auth?.userId;
+
+    if (!actorUserId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const params = groupParamsSchema.safeParse(req.params);
+
+    if (!params.success) {
+      res.status(400).json({
+        message: "Validation failed",
+        errors: params.error.issues,
+      });
+      return;
+    }
+
+    const result = addGroupMemberSchema.safeParse(req.body);
+
+    if (!result.success) {
+      res.status(400).json({
+        message: "Validation failed",
+        errors: result.error.issues,
+      });
+      return;
+    }
+
+    const member = await addGroupMember(
+      params.data.groupId,
+      actorUserId,
+      result.data,
+    );
+
+    res.status(201).json({
+      message: "Member added successfully",
+      data: member,
+    });
+  } catch (error) {
+    if (error instanceof GroupMembershipError) {
+      handleGroupMembershipError(error, res);
+      return;
+    }
+
+    next(error);
+  }
+};
+
+export const listGroupMembersController: RequestHandler<{
+  groupId: string;
+}> = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const actorUserId = req.auth?.userId;
+
+    if (!actorUserId) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const params = groupParamsSchema.safeParse(req.params);
+
+    if (!params.success) {
+      res.status(400).json({
+        message: "Validation failed",
+        errors: params.error.issues,
+      });
+      return;
+    }
+
+    const members = await listGroupMembers(params.data.groupId, actorUserId);
+
+    res.status(200).json({
+      message: "Group members fetched successfully",
+      data: members,
+    });
+  } catch (error) {
+    if (error instanceof GroupMembershipError) {
+      handleGroupMembershipError(error, res);
+      return;
+    }
+
     next(error);
   }
 };
