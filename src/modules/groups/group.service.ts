@@ -68,3 +68,36 @@ export async function createGroup(
     });
   });
 }
+
+export async function listMyGroups(userId: string) {
+  return prisma.group.findMany({
+    where: {
+      archivedAt: null,
+      memberships: {
+        some: {
+          userId,
+          leftAt: null,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      currency: true,
+      createdAt: true,
+      memberships: {
+        where: {
+          userId,
+          leftAt: null,
+        },
+        select: {
+          role: true,
+          joinedAt: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
