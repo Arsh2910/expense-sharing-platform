@@ -1,18 +1,25 @@
 import type { RequestHandler } from "express";
-import { verifyAccessToken } from "./token.service.js";
+import { accessCookieName, verifyAccessToken } from "./token.service.js";
 import { prisma } from "../../lib/prisma.js";
 
 export const authenticate: RequestHandler = (req, res, next) => {
   const authHeader = req.headers.authorization;
+  const cookieToken = req.headers.cookie
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${accessCookieName}=`))
+    ?.slice(accessCookieName.length + 1);
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (!authHeader?.startsWith("Bearer ") && !cookieToken) {
     res.status(401).json({
       message: "Authentication required",
     });
     return;
   }
 
-  const token = authHeader.slice(7).trim();
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : cookieToken!;
 
   let payload;
 
@@ -25,12 +32,18 @@ export const authenticate: RequestHandler = (req, res, next) => {
     return;
   }
 
-  if (typeof payload === "string" || typeof payload.sub !== "string") {
+  if (
+    typeof payload === "string" ||
+    typeof payload.sub !== "string" ||
+    typeof payload.jti !== "string" ||
+    payload.type !== "access"
+  ) {
     res.status(401).json({
       message: "Invalid access token",
     });
     return;
   }
+  const sessionId = payload.jti;
 
   prisma.user
     .findUnique({
@@ -38,10 +51,18 @@ export const authenticate: RequestHandler = (req, res, next) => {
       select: {
         id: true,
         status: true,
+        sessions: {
+          where: {
+            id: sessionId,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        },
       },
     })
     .then((user) => {
-      if (!user || user.status !== "ACTIVE") {
+      if (!user || user.status !== "ACTIVE" || user.sessions.length === 0) {
         res.status(401).json({
           message: "Account unavailable",
         });
@@ -50,6 +71,7 @@ export const authenticate: RequestHandler = (req, res, next) => {
 
       req.auth = {
         userId: user.id,
+        sessionId,
       };
 
       next();
