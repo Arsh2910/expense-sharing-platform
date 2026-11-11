@@ -1,0 +1,70 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+
+  @@map("user_status")
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+
+  @@map("group_role")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @db.VarChar(255)
+  username     String?    @unique @db.VarChar(30)
+  displayName  String     @map("display_name") @db.VarChar(100)
+ passwordHash String @map("password_hash") @db.VarChar(255)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  memberships  GroupMembership[]
+
+  @@map("users")
+}
+
+model Group {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @db.VarChar(100)
+  currency String @db.Char(3) 
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  memberships GroupMembership[]
+
+  @@map("groups")
+}
+
+model GroupMembership {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  groupId   String     @map("group_id") @db.Uuid
+  role      GroupRole  @default(MEMBER)
+
+  joinedAt  DateTime   @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt    DateTime?  @map("left_at") @db.Timestamptz(6)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  group     Group      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([id, groupId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_memberships")
+}

@@ -1,0 +1,13 @@
+# Prisma generated client
+/generated/prisma/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+.env
+.claude
+.agents
+.windsurf
