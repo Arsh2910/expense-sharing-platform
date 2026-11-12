@@ -3,11 +3,14 @@ import { groupsApi } from "@/features/groups/groups.api";
 import type {
   AddGroupMemberPayload,
   CreateGroupPayload,
+  UpdateGroupPayload,
+  UpdateMemberRolePayload,
 } from "@/features/groups/groups.api";
 
 export const groupsKeys = {
   all: ["groups"] as const,
   list: () => [...groupsKeys.all, "list"] as const,
+  details: (groupId: string) => [...groupsKeys.all, "details", groupId] as const,
   members: (groupId: string) => [...groupsKeys.all, "members", groupId] as const,
 };
 
@@ -15,6 +18,15 @@ export function useMyGroupsQuery() {
   return useQuery({
     queryKey: groupsKeys.list(),
     queryFn: () => groupsApi.listMyGroups(),
+  });
+}
+
+export function useGroupDetailsQuery(groupId: string | undefined) {
+  return useQuery({
+    queryKey: groupsKeys.details(groupId ?? ""),
+    queryFn: () => groupsApi.getGroupDetails(groupId!),
+    enabled: Boolean(groupId),
+    retry: false,
   });
 }
 
@@ -38,6 +50,29 @@ export function useCreateGroupMutation() {
   });
 }
 
+export function useUpdateGroupMutation(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateGroupPayload) =>
+      groupsApi.updateGroup(groupId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupsKeys.all });
+    },
+  });
+}
+
+export function useArchiveGroupMutation(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => groupsApi.archiveGroup(groupId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupsKeys.all });
+    },
+  });
+}
+
 export function useAddGroupMemberMutation(groupId: string) {
   const queryClient = useQueryClient();
 
@@ -48,7 +83,43 @@ export function useAddGroupMemberMutation(groupId: string) {
       void queryClient.invalidateQueries({
         queryKey: groupsKeys.members(groupId),
       });
+      void queryClient.invalidateQueries({
+        queryKey: groupsKeys.details(groupId),
+      });
     },
   });
 }
 
+export function useRemoveGroupMemberMutation(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (targetUserId: string) =>
+      groupsApi.removeMember(groupId, targetUserId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupsKeys.all });
+    },
+  });
+}
+
+export function useUpdateMemberRoleMutation(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      targetUserId,
+      payload,
+    }: {
+      targetUserId: string;
+      payload: UpdateMemberRolePayload;
+    }) => groupsApi.updateMemberRole(groupId, targetUserId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: groupsKeys.members(groupId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: groupsKeys.details(groupId),
+      });
+    },
+  });
+}

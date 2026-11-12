@@ -57,6 +57,32 @@ export interface CreatedGroup {
   memberships: CreatedGroupMembership[];
 }
 
+export interface GroupDetails {
+  id: string;
+  name: string;
+  currency: string;
+  createdAt: string;
+  archivedAt: string | null;
+  memberCount: number;
+  myRole: GroupRole;
+}
+
+export interface UpdatedGroup {
+  id: string;
+  name: string;
+  currency: string;
+  createdAt: string;
+  archivedAt: string | null;
+}
+
+export interface RemoveMemberResult {
+  groupId: string;
+  removedUserId: string;
+  leftAt: string;
+  successorUserId: string | null;
+  groupArchived: boolean;
+}
+
 export interface ApiSuccessResponse<T> {
   message?: string;
   data: T;

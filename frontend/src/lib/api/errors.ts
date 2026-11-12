@@ -55,3 +55,17 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+export function getValidationErrors(error: unknown): Record<string, string> {
+  if (error instanceof ApiError && error.issues.length > 0) {
+    const map: Record<string, string> = {};
+    for (const issue of error.issues) {
+      const key = String(issue.path?.[0] ?? "form");
+      if (!map[key]) {
+        map[key] = issue.message;
+      }
+    }
+    return map;
+  }
+  return {};
+}
+

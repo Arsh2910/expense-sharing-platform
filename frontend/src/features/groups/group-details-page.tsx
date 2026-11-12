@@ -2,14 +2,19 @@ import * as React from "react";
 import {
   Activity,
   ArrowLeftRight,
+  LogOut,
+  MoreVertical,
   Receipt,
   RefreshCw,
   Scale,
   Settings2,
+  Shield,
+  ShieldCheck,
+  UserMinus,
   UserPlus,
   Users,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -21,19 +26,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ComingSoonPanel, EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { AddMemberDialog } from "@/features/groups/add-member-dialog";
+import { EditGroupDialog } from "@/features/groups/edit-group-dialog";
+import { EditMemberRoleDialog } from "@/features/groups/edit-member-role-dialog";
 import {
+  useGroupDetailsQuery,
   useGroupMembersQuery,
-  useMyGroupsQuery,
+  useRemoveGroupMemberMutation,
 } from "@/features/groups/groups.queries";
 import { RoleBadge } from "@/features/groups/role-badge";
 import { getErrorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, getCurrencyLabel } from "@/lib/utils/format";
+import type { GroupMember } from "@/types/api";
 
 type GroupTab = "members" | "expenses" | "balances" | "settlements" | "activity";
 
@@ -57,20 +76,33 @@ const TABS: ReadonlyArray<{
 
 export function GroupDetailsPage() {
   const { groupId } = useParams<{ groupId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { addToast } = useToast();
+
   const [activeTab, setActiveTab] = React.useState<GroupTab>("members");
   const [addMemberOpen, setAddMemberOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
+  const [selectedMemberForRole, setSelectedMemberForRole] =
+    React.useState<GroupMember | null>(null);
 
-  const groupsQuery = useMyGroupsQuery();
+  const [removeDialogOpen, setRemoveDialogOpen] = React.useState(false);
+  const [memberToRemove, setMemberToRemove] =
+    React.useState<GroupMember | null>(null);
+  const [leaveDialogOpen, setLeaveDialogOpen] = React.useState(false);
+
+  // Directly fetch group details and member list via the new backend endpoints
+  const groupDetailsQuery = useGroupDetailsQuery(groupId);
   const membersQuery = useGroupMembersQuery(groupId);
+  const removeMutation = useRemoveGroupMemberMutation(groupId ?? "");
 
-  const group = React.useMemo(
-    () => groupsQuery.data?.find((item) => item.id === groupId),
-    [groupsQuery.data, groupId],
-  );
+  const group = groupDetailsQuery.data;
+  const members = membersQuery.data ?? [];
 
   const isLoadingInitial =
-    groupsQuery.isLoading || (membersQuery.isLoading && !membersQuery.data);
+    (groupDetailsQuery.isLoading && !groupDetailsQuery.data) ||
+    (membersQuery.isLoading && !membersQuery.data);
 
   if (!groupId) {
     return (
@@ -105,9 +137,9 @@ export function GroupDetailsPage() {
     );
   }
 
-  // Handle forbidden / not found / invalid UUID errors cleanly
-  if (membersQuery.isError) {
-    const err = membersQuery.error;
+  // Handle errors cleanly (Forbidden, Not Found, Invalid UUID)
+  if (groupDetailsQuery.isError || membersQuery.isError) {
+    const err = groupDetailsQuery.error ?? membersQuery.error;
     const isAccessOrMissing =
       isApiError(err) &&
       (err.status === 404 || err.status === 403 || err.status === 400);
@@ -150,8 +182,8 @@ export function GroupDetailsPage() {
               variant="outline"
               size="sm"
               onClick={() => {
+                void groupDetailsQuery.refetch();
                 void membersQuery.refetch();
-                void groupsQuery.refetch();
               }}
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -163,34 +195,81 @@ export function GroupDetailsPage() {
     );
   }
 
-  // Handle case where groupsQuery succeeded without finding this group (e.g. archived/missing)
-  if (!groupsQuery.isLoading && !groupsQuery.isError && !group) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Group not found"
-          backTo={{ label: "Back to My Groups", href: "/groups" }}
-        />
-        <EmptyState
-          icon={Users}
-          title="This group could not be found"
-          description="It may have been archived or you are no longer an active member."
-          action={
-            <Button asChild>
-              <Link to="/groups">Return to My Groups</Link>
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
+  const myRole = group?.myRole;
+  const isOwner = myRole === "OWNER";
+  const isAdmin = myRole === "ADMIN";
+  const canManageSettings = isOwner || isAdmin;
+  const canAddMembers = isOwner || isAdmin;
 
-  const members = membersQuery.data ?? [];
-  const currentMembership =
-    group?.memberships[0] ??
-    members.find((member) => member.user.id === user?.id);
-  const currentRole = currentMembership?.role;
-  const canAddMembers = currentRole === "OWNER" || currentRole === "ADMIN";
+  const handleOpenRoleDialog = (member: GroupMember) => {
+    setSelectedMemberForRole(member);
+    setRoleDialogOpen(true);
+  };
+
+  const handleOpenRemoveDialog = (member: GroupMember) => {
+    setMemberToRemove(member);
+    setRemoveDialogOpen(true);
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove) return;
+
+    try {
+      await removeMutation.mutateAsync(memberToRemove.user.id);
+      addToast({
+        title: "Member removed",
+        description: `${memberToRemove.user.displayName} was removed from the group.`,
+        variant: "info",
+      });
+      setRemoveDialogOpen(false);
+      setMemberToRemove(null);
+    } catch (error) {
+      addToast({
+        title: "Could not remove member",
+        description: getErrorMessage(error),
+        variant: "error",
+      });
+    }
+  };
+
+  const handleConfirmLeaveGroup = async () => {
+    if (!user) return;
+
+    try {
+      const res = await removeMutation.mutateAsync(user.id);
+      setLeaveDialogOpen(false);
+
+      if (res.data?.groupArchived) {
+        addToast({
+          title: "Left group and group archived",
+          description:
+            "You were the sole member. The group has been automatically archived.",
+          variant: "info",
+        });
+      } else if (res.data?.successorUserId) {
+        addToast({
+          title: "Left group",
+          description:
+            "You left the group. Ownership has been transferred to the next active member.",
+          variant: "info",
+        });
+      } else {
+        addToast({
+          title: "Left group",
+          description: "You have left the group.",
+          variant: "info",
+        });
+      }
+
+      navigate("/groups");
+    } catch (error) {
+      addToast({
+        title: "Could not leave group",
+        description: getErrorMessage(error),
+        variant: "error",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -203,16 +282,39 @@ export function GroupDetailsPage() {
         }
         backTo={{ label: "Back to My Groups", href: "/groups" }}
         actions={
-          canAddMembers ? (
-            <Button onClick={() => setAddMemberOpen(true)}>
-              <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Add member
+          <div className="flex flex-wrap items-center gap-2">
+            {canManageSettings && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings2 className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Settings
+              </Button>
+            )}
+
+            {canAddMembers && (
+              <Button size="sm" onClick={() => setAddMemberOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Add member
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#71717A] hover:text-[#B91C1C] hover:border-red-200"
+              onClick={() => setLeaveDialogOpen(true)}
+            >
+              <LogOut className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+              Leave
             </Button>
-          ) : undefined
+          </div>
         }
       />
 
-      {/* Metadata Summary Cards (only backed by real data) */}
+      {/* Metadata Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-5">
@@ -226,7 +328,7 @@ export function GroupDetailsPage() {
           <CardContent className="p-5">
             <p className="text-xs font-medium text-[#71717A]">Active members</p>
             <p className="mt-1.5 text-lg font-semibold tracking-tight text-[#18181B] tabular-nums">
-              {members.length}
+              {group?.memberCount ?? members.length}
             </p>
           </CardContent>
         </Card>
@@ -234,8 +336,8 @@ export function GroupDetailsPage() {
           <CardContent className="p-5">
             <p className="text-xs font-medium text-[#71717A]">Your role</p>
             <div className="mt-2">
-              {currentRole ? (
-                <RoleBadge role={currentRole} />
+              {myRole ? (
+                <RoleBadge role={myRole} />
               ) : (
                 <span className="text-sm text-[#71717A]">—</span>
               )}
@@ -278,7 +380,7 @@ export function GroupDetailsPage() {
         </nav>
       </div>
 
-      {/* Active Tab Panel */}
+      {/* Active Tab: Members */}
       {activeTab === "members" && (
         <div className="space-y-5">
           <Card>
@@ -312,6 +414,21 @@ export function GroupDetailsPage() {
                 <ul className="divide-y divide-[#F4F3EF]">
                   {members.map((member) => {
                     const isCurrentUser = member.user.id === user?.id;
+
+                    // Can the current viewer remove this member?
+                    // OWNER can remove ADMIN or MEMBER, or another OWNER if another owner remains
+                    // ADMIN can remove MEMBER
+                    const canRemoveThisMember =
+                      !isCurrentUser &&
+                      (isOwner || (isAdmin && member.role === "MEMBER"));
+
+                    // Can the current viewer change this member's role?
+                    // Only OWNER can update roles
+                    const canChangeThisMemberRole = isOwner && !isCurrentUser;
+
+                    const hasRowActions =
+                      canChangeThisMemberRole || canRemoveThisMember;
+
                     return (
                       <li
                         key={member.id}
@@ -342,8 +459,48 @@ export function GroupDetailsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-start sm:self-center">
+                        <div className="flex items-center gap-2.5 self-start sm:self-center">
                           <RoleBadge role={member.role} />
+
+                          {hasRowActions && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-[#71717A] hover:text-[#18181B]"
+                                  aria-label="Member actions"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>
+                                  {member.user.displayName}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+
+                                {canChangeThisMemberRole && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenRoleDialog(member)}
+                                  >
+                                    <ShieldCheck className="h-4 w-4 mr-2 text-[#0F766E]" />
+                                    Change Role
+                                  </DropdownMenuItem>
+                                )}
+
+                                {canRemoveThisMember && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenRemoveDialog(member)}
+                                    className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                                  >
+                                    <UserMinus className="h-4 w-4 mr-2" />
+                                    Remove from Group
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </li>
                     );
@@ -353,11 +510,22 @@ export function GroupDetailsPage() {
             </CardContent>
           </Card>
 
-          <ComingSoonPanel
-            icon={Settings2}
-            title="Role changes, member removal, and group settings"
-            description="Promoting admins, transferring ownership, removing members, leaving a group, and renaming or archiving groups will appear here once those endpoints are available."
-          />
+          {/* Role Capabilities Reference */}
+          <Card className="border-[#E7E5E0] bg-[#FAF8F5]/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-[#18181B]">
+                <Shield className="h-4 w-4 text-[#0F766E]" />
+                Role & Permissions Overview
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {isOwner
+                  ? "As an Owner, you have full control over group settings, member roles, member removals, and archival."
+                  : isAdmin
+                    ? "As an Admin, you can invite new members, remove regular members, and update group settings."
+                    : "As a Member, you can view group expenses, record payments, and manage your participation."}
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       )}
 
@@ -397,13 +565,60 @@ export function GroupDetailsPage() {
         />
       )}
 
+      {/* Dialogs */}
       {group && (
-        <AddMemberDialog
-          groupId={group.id}
-          groupName={group.name}
-          open={addMemberOpen}
-          onOpenChange={setAddMemberOpen}
-        />
+        <>
+          <AddMemberDialog
+            groupId={group.id}
+            groupName={group.name}
+            open={addMemberOpen}
+            onOpenChange={setAddMemberOpen}
+          />
+
+          <EditGroupDialog
+            groupId={group.id}
+            initialName={group.name}
+            currency={group.currency}
+            myRole={group.myRole}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+          />
+
+          <EditMemberRoleDialog
+            groupId={group.id}
+            member={selectedMemberForRole}
+            open={roleDialogOpen}
+            onOpenChange={setRoleDialogOpen}
+          />
+
+          {/* Remove Member Confirmation */}
+          <ConfirmDialog
+            open={removeDialogOpen}
+            onOpenChange={setRemoveDialogOpen}
+            title={`Remove ${memberToRemove?.user.displayName ?? "member"}?`}
+            description="They will lose access to this group and will no longer be able to view group expenses or members."
+            confirmLabel="Remove Member"
+            variant="destructive"
+            isLoading={removeMutation.isPending}
+            onConfirm={handleConfirmRemoveMember}
+          />
+
+          {/* Leave Group Confirmation */}
+          <ConfirmDialog
+            open={leaveDialogOpen}
+            onOpenChange={setLeaveDialogOpen}
+            title={`Leave "${group.name}"?`}
+            description={
+              isOwner
+                ? "You are currently an Owner of this group. If you leave, ownership will be automatically transferred to the next active member. If no other members remain, the group will be archived."
+                : "Are you sure you want to leave this group? You will no longer have access to its expenses or members."
+            }
+            confirmLabel="Leave Group"
+            variant="destructive"
+            isLoading={removeMutation.isPending}
+            onConfirm={handleConfirmLeaveGroup}
+          />
+        </>
       )}
     </div>
   );
