@@ -13,3 +13,4 @@ dist/
 .windsurf
 postman
 .postman
+scripts/verify-all.ts

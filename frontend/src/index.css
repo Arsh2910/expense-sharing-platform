@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --color-canvas: #FAF9F6;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F4F3EF;
+  --color-ink: #18181B;
+  --color-ink-secondary: #52525B;
+  --color-ink-muted: #71717A;
+  --color-border-subtle: #E7E5E0;
+  --color-border-strong: #D6D3CD;
+
+  --color-accent: #0F766E;
+  --color-accent-hover: #0D5E57;
+  --color-accent-soft: #CCFBF1;
+  --color-accent-tint: #F0FDFA;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  /* Accessible keyboard focus indicator */
+  :focus-visible {
+    outline: 2px solid #0F766E;
+    outline-offset: 2px;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
