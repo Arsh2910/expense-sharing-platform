@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedCurrencyCode } from "../finance/index.js";
 
 export const createGroupSchema = z.object({
   name: z
@@ -9,7 +10,10 @@ export const createGroupSchema = z.object({
 
   currency: z
     .string()
-    .regex(/^[A-Z]{3}$/, "Currency must be a three-letter uppercase code"),
+    .regex(/^[A-Z]{3}$/, "Currency must be a three-letter uppercase code")
+    .refine(isSupportedCurrencyCode, {
+      message: "Currency is not supported",
+    }),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;

@@ -61,6 +61,12 @@ describe("Group Management APIs", () => {
         .set("Authorization", user.authHeader)
         .send({ name: "Invalid Currency Group", currency: "USDT" });
       expect(res3.status).toBe(400);
+
+      const res4 = await request(app)
+        .post("/api/groups")
+        .set("Authorization", user.authHeader)
+        .send({ name: "Unsupported Currency Group", currency: "XYZ" });
+      expect(res4.status).toBe(400);
     });
 
     it("should reject creation with 400 when name is empty, whitespace, or exceeds 100 chars", async () => {

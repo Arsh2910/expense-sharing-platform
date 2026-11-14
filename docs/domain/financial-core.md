@@ -39,7 +39,7 @@ They are corrected in opposite directions (below), and one may be true while the
 - Never a float, never a decimal string in the database.
 - Amounts are signed only where the domain defines a sign (balances). Expense, payer and split amounts are non-negative by construction.
 
-### 2.2 Type choice **[DECIDE]**
+### 2.2 Type choice **[FINAL]**
 
 `bigint` (Prisma `BigInt`) vs `int4` (Prisma `Int`).
 
