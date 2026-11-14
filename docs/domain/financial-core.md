@@ -190,7 +190,7 @@ rem  = total % n
 
 **The handoff's example implies "the first participant gets the extra unit."** That rule is not implementable as stated: we key splits by `user_id` and discard request order, so "first" is not recoverable. Worse, if order *were* persisted, editing the participant list would shuffle who pays the extra penny, producing balance changes nobody asked for.
 
-**Candidate deterministic orders [DECIDE]:**
+**Final deterministic order (Option A):**
 
 | Option | Rule | Property | Downside |
 |---|---|---|---|
@@ -217,7 +217,7 @@ Each participant supplies an explicit minor-unit amount. `Σ amounts` must equal
 
 `amount >= 0` is allowed (a participant who owes nothing is legitimate — e.g. children on a trip). At least one participant must have `amount > 0`.
 
-#### 4.4.3 Percentage split
+#### 4.4.3 Percentage split **[FINAL]**
 
 **Percentages must not be floats.** A percentage is stored as an integer with a fixed scale:
 
