@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate } from "../auth/auth.middleware.js";
+import { getGroupBalancesController } from "../balances/balance.controller.js";
 import expenseRoutes from "../expenses/expense.routes.js";
+import settlementRoutes from "../settlements/settlement.routes.js";
 import {
   addGroupMemberController,
   archiveGroupController,
@@ -18,6 +20,8 @@ const router = Router();
 router.post("/", authenticate, createGroupController);
 router.get("/", authenticate, listMyGroupsController);
 router.use("/:groupId/expenses", expenseRoutes);
+router.get("/:groupId/balances", authenticate, getGroupBalancesController);
+router.use("/:groupId/settlements", settlementRoutes);
 router.get("/:groupId", authenticate, getGroupDetailsController);
 router.patch("/:groupId", authenticate, updateGroupController);
 router.delete("/:groupId", authenticate, archiveGroupController);

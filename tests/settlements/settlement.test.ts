@@ -1,0 +1,266 @@
+import crypto from "node:crypto";
+import request from "supertest";
+import { afterAll, describe, expect, it } from "vitest";
+import app from "../../src/app.js";
+import { prisma } from "../../src/lib/prisma.js";
+import { createTestUser } from "../helpers.js";
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function createGroupWithMember() {
+  const owner = await createTestUser();
+  const member = await createTestUser();
+  const group = await request(app)
+    .post("/api/groups")
+    .set("Authorization", owner.authHeader)
+    .send({ name: `Settlement test ${crypto.randomUUID()}`, currency: "USD" });
+  const groupId = group.body.data.id as string;
+  await request(app)
+    .post(`/api/groups/${groupId}/members`)
+    .set("Authorization", owner.authHeader)
+    .send({ email: member.user.email });
+  return { owner, member, groupId };
+}
+
+async function createExpense(
+  groupId: string,
+  authHeader: string,
+  ownerId: string,
+  memberId: string,
+) {
+  return request(app)
+    .post(`/api/groups/${groupId}/expenses`)
+    .set("Authorization", authHeader)
+    .send({
+      description: "Shared dinner",
+      expenseDate: today(),
+      payers: [{ userId: ownerId, amount: "10.00" }],
+      split: { type: "EQUAL", participants: [ownerId, memberId] },
+    });
+}
+
+async function createSettlement(
+  groupId: string,
+  authHeader: string,
+  fromUserId: string,
+  toUserId: string,
+  amount = "5.00",
+) {
+  return request(app)
+    .post(`/api/groups/${groupId}/settlements`)
+    .set("Authorization", authHeader)
+    .send({
+      fromUserId,
+      toUserId,
+      amount,
+      settledOn: today(),
+      note: "Paid back",
+    });
+}
+
+function balancesByUser(response: request.Response) {
+  return new Map(
+    response.body.data.members.map(
+      (member: { userId: string; balanceMinor: number }) => [
+        member.userId,
+        member,
+      ],
+    ),
+  );
+}
+
+describe("Settlement APIs", () => {
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("records a settlement and updates both balances atomically", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    await createExpense(groupId, owner.authHeader, owner.user.id, member.user.id);
+
+    const settlement = await createSettlement(
+      groupId,
+      member.authHeader,
+      member.user.id,
+      owner.user.id,
+    );
+    expect(settlement.status).toBe(201);
+    expect(settlement.body.data.amountMinor).toBe(500);
+
+    const balances = await request(app)
+      .get(`/api/groups/${groupId}/balances`)
+      .set("Authorization", owner.authHeader);
+    const byUser = balancesByUser(balances);
+    expect(byUser.get(owner.user.id)).toMatchObject({ balanceMinor: 0 });
+    expect(byUser.get(member.user.id)).toMatchObject({ balanceMinor: 0 });
+  });
+
+  it("lists settlement history without mutating the original row", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const created = await createSettlement(
+      groupId,
+      owner.authHeader,
+      owner.user.id,
+      member.user.id,
+      "3.25",
+    );
+    expect(created.status).toBe(201);
+
+    const list = await request(app)
+      .get(`/api/groups/${groupId}/settlements`)
+      .set("Authorization", member.authHeader);
+    expect(list.status).toBe(200);
+    expect(list.body.data).toHaveLength(1);
+    expect(list.body.data[0]).toMatchObject({
+      id: created.body.data.id,
+      amountMinor: 325,
+      fromUserId: owner.user.id,
+      toUserId: member.user.id,
+    });
+  });
+
+  it("reverses a settlement by appending the opposite settlement", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    await createExpense(groupId, owner.authHeader, owner.user.id, member.user.id);
+    const created = await createSettlement(
+      groupId,
+      member.authHeader,
+      member.user.id,
+      owner.user.id,
+    );
+
+    const reversal = await request(app)
+      .post(
+        `/api/groups/${groupId}/settlements/${created.body.data.id}/reverse`,
+      )
+      .set("Authorization", owner.authHeader);
+    expect(reversal.status).toBe(201);
+    expect(reversal.body.data.reversesId).toBe(created.body.data.id);
+    expect(reversal.body.data.fromUserId).toBe(owner.user.id);
+    expect(reversal.body.data.toUserId).toBe(member.user.id);
+
+    const list = await request(app)
+      .get(`/api/groups/${groupId}/settlements`)
+      .set("Authorization", owner.authHeader);
+    expect(list.body.data).toHaveLength(2);
+
+    const balances = await request(app)
+      .get(`/api/groups/${groupId}/balances`)
+      .set("Authorization", owner.authHeader);
+    const byUser = balancesByUser(balances);
+    expect(byUser.get(owner.user.id)).toMatchObject({ balanceMinor: 500 });
+    expect(byUser.get(member.user.id)).toMatchObject({ balanceMinor: -500 });
+  });
+
+  it("allows overpayment and represents the resulting credit as positive", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    await createExpense(groupId, owner.authHeader, owner.user.id, member.user.id);
+    const settlement = await createSettlement(
+      groupId,
+      member.authHeader,
+      member.user.id,
+      owner.user.id,
+      "7.00",
+    );
+    expect(settlement.status).toBe(201);
+
+    const balances = await request(app)
+      .get(`/api/groups/${groupId}/balances`)
+      .set("Authorization", owner.authHeader);
+    const byUser = balancesByUser(balances);
+    expect(byUser.get(member.user.id)).toMatchObject({
+      balanceMinor: 200,
+      direction: "RECEIVES",
+    });
+  });
+
+  it("rejects self-settlement, former participants, and future dates", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const self = await createSettlement(
+      groupId,
+      owner.authHeader,
+      owner.user.id,
+      owner.user.id,
+    );
+    expect(self.status).toBe(422);
+    expect(self.body.code).toBe("SAME_USER");
+
+    await request(app)
+      .delete(`/api/groups/${groupId}/members/${member.user.id}`)
+      .set("Authorization", member.authHeader);
+    const former = await createSettlement(
+      groupId,
+      owner.authHeader,
+      member.user.id,
+      owner.user.id,
+    );
+    expect(former.status).toBe(422);
+    expect(former.body.code).toBe("INVALID_MEMBER");
+
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const future = await request(app)
+      .post(`/api/groups/${groupId}/settlements`)
+      .set("Authorization", owner.authHeader)
+      .send({
+        fromUserId: owner.user.id,
+        toUserId: member.user.id,
+        amount: "1.00",
+        settledOn: tomorrow,
+      });
+    expect(future.status).toBe(422);
+    expect(future.body.code).toBe("FUTURE_DATE");
+  });
+
+  it("allows concurrent settlements without balance drift", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const [left, right] = await Promise.all([
+      createSettlement(
+        groupId,
+        member.authHeader,
+        member.user.id,
+        owner.user.id,
+        "1.00",
+      ),
+      createSettlement(
+        groupId,
+        member.authHeader,
+        member.user.id,
+        owner.user.id,
+        "2.00",
+      ),
+    ]);
+    expect(left.status).toBe(201);
+    expect(right.status).toBe(201);
+
+    const list = await request(app)
+      .get(`/api/groups/${groupId}/settlements`)
+      .set("Authorization", owner.authHeader);
+    expect(list.body.data).toHaveLength(2);
+    const balances = await request(app)
+      .get(`/api/groups/${groupId}/balances`)
+      .set("Authorization", owner.authHeader);
+    const byUser = balancesByUser(balances);
+    expect(byUser.get(member.user.id)).toMatchObject({ balanceMinor: 300 });
+    expect(byUser.get(owner.user.id)).toMatchObject({ balanceMinor: -300 });
+  });
+
+  it("allows only one reversal per settlement", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const created = await createSettlement(
+      groupId,
+      owner.authHeader,
+      owner.user.id,
+      member.user.id,
+    );
+    const path = `/api/groups/${groupId}/settlements/${created.body.data.id}/reverse`;
+    const first = await request(app).post(path).set("Authorization", owner.authHeader);
+    expect(first.status).toBe(201);
+    const second = await request(app).post(path).set("Authorization", owner.authHeader);
+    expect(second.status).toBe(409);
+    expect(second.body.code).toBe("ALREADY_REVERSED");
+  });
+});

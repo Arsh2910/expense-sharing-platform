@@ -153,6 +153,8 @@ export async function apiRequest<T>(
         message: payload.message ?? "Unauthorized",
         status: 401,
         kind: "unauthorized",
+        code: payload.code,
+        details: payload.details,
         issues: payload.errors,
       });
     }
@@ -179,6 +181,8 @@ export async function apiRequest<T>(
       message,
       status: response.status,
       kind: classifyStatus(response.status),
+      code: payload.code,
+      details: payload.details,
       issues: payload.errors,
     });
   }

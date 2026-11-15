@@ -83,15 +83,19 @@ export function parseMajorToMinor(
 
 /**
  * Formats integer minor units to a plain major-unit decimal string (e.g. 1050n -> "10.50").
- * Avoids floating-point math.
+ * Accepts either bigint or number minor units and avoids floating-point math.
  */
 export function formatMinorToMajor(
-  minorUnits: bigint,
+  minorUnits: bigint | number,
   currency: string,
 ): string {
+  const minor =
+    typeof minorUnits === "number"
+      ? BigInt(Math.trunc(minorUnits))
+      : minorUnits;
   const exponent = getCurrencyExponent(currency);
-  const isNegative = minorUnits < 0n;
-  const absolute = isNegative ? -minorUnits : minorUnits;
+  const isNegative = minor < 0n;
+  const absolute = isNegative ? -minor : minor;
 
   if (exponent === 0) {
     return (isNegative ? "-" : "") + absolute.toString();
@@ -106,12 +110,17 @@ export function formatMinorToMajor(
 
 /**
  * Formats integer minor units for user display with currency code or symbol (e.g. "$10.50").
+ * Accepts either bigint or number minor units.
  */
 export function formatMoneyDisplay(
-  minorUnits: bigint,
+  minorUnits: bigint | number,
   currency: string,
 ): string {
-  const major = formatMinorToMajor(minorUnits, currency);
+  const minor =
+    typeof minorUnits === "number"
+      ? BigInt(Math.trunc(minorUnits))
+      : minorUnits;
+  const major = formatMinorToMajor(minor, currency);
   const symbol = getCurrencySymbol(currency);
   return `${symbol}${major}`;
 }

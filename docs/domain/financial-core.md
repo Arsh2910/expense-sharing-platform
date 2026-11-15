@@ -381,8 +381,8 @@ This is the collaborative-editing policy from the handoff, and the reason D8 (40
 balance(group, u) =
       Σ paid(u, e)      for e in group, e not deleted
     − Σ share(u, e)     for e in group, e not deleted
-    + Σ received(u, s)  for settlements s where s.to_user_id = u
-    − Σ sent(u, s)      for settlements s where s.from_user_id = u
+    − Σ received(u, s)  for settlements s where s.to_user_id = u
+    + Σ sent(u, s)      for settlements s where s.from_user_id = u
 ```
 
 - **Positive** → the member should receive money.
@@ -398,7 +398,7 @@ C =      0 − 25000            = −25000
 Σ = 0 ✓
 ```
 
-Settlement effect: a settlement of `x` from B to A gives `A += x`, `B −= x`. Equal and opposite, by construction.
+Settlement effect: a settlement of `x` from B to A gives `A -= x`, `B += x`. Equal and opposite, by construction. Positive balances mean the member should receive money, so a repayment reduces the recipient's receivable and reduces the sender's obligation.
 
 **Σ balances in a group = 0** is an emergent property, not something we enforce by making a number sum to zero — it falls out of `Σ payers == Σ splits` per expense and `Σ settlement effects == 0` per settlement. That is why the allocation invariants (§7) are the load-bearing ones.
 

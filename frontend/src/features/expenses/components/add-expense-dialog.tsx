@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Plus } from "lucide-react";
+import { AlertCircle, Check, Pencil, Plus, RefreshCw } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -14,14 +14,19 @@ import {
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import type { GroupMember } from "@/types/api";
-import { getErrorMessage, getValidationErrors } from "@/lib/api/errors";
-import { useCreateExpenseMutation } from "../expenses.queries";
+import { getErrorMessage, getValidationErrors, isApiError } from "@/lib/api/errors";
+import {
+  useCreateExpenseMutation,
+  useUpdateExpenseMutation,
+} from "../expenses.queries";
 import type {
   CreateExpensePayload,
-  CreatedExpense,
+  ExpenseItem,
   SplitType,
+  UpdateExpensePayload,
 } from "../expenses.types";
 import {
+  formatMinorToMajor,
   formatMoneyDisplay,
   formatPercentageUnits,
   parseMajorToMinor,
@@ -56,7 +61,10 @@ export interface AddExpenseDialogProps {
   members: GroupMember[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onExpenseCreated?: (expense: CreatedExpense) => void;
+  onExpenseCreated?: (expense: ExpenseItem) => void;
+  initialExpense?: ExpenseItem | null;
+  onExpenseUpdated?: (expense: ExpenseItem) => void;
+  onReloadExpense?: () => void;
 }
 
 interface AddExpenseFormProps {
@@ -64,7 +72,10 @@ interface AddExpenseFormProps {
   currency: string;
   members: GroupMember[];
   onClose: () => void;
-  onExpenseCreated?: (expense: CreatedExpense) => void;
+  onExpenseCreated?: (expense: ExpenseItem) => void;
+  initialExpense?: ExpenseItem | null;
+  onExpenseUpdated?: (expense: ExpenseItem) => void;
+  onReloadExpense?: () => void;
 }
 
 function AddExpenseForm({
@@ -73,10 +84,21 @@ function AddExpenseForm({
   members,
   onClose,
   onExpenseCreated,
+  initialExpense,
+  onExpenseUpdated,
+  onReloadExpense,
 }: AddExpenseFormProps) {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const isEdit = Boolean(initialExpense);
+
   const createMutation = useCreateExpenseMutation(groupId);
+  const updateMutation = useUpdateExpenseMutation(
+    groupId,
+    initialExpense?.id ?? "",
+  );
+  const isPending = isEdit ? updateMutation.isPending : createMutation.isPending;
+  const activeError = isEdit ? updateMutation.error : createMutation.error;
 
   const todayIso = React.useMemo(() => getTodayIsoDate(), []);
 
@@ -86,25 +108,77 @@ function AddExpenseForm({
     "";
 
   // Form states initialized directly on mount
-  const [description, setDescription] = React.useState("");
-  const [category, setCategory] = React.useState("");
-  const [expenseDate, setExpenseDate] = React.useState(todayIso);
+  const [description, setDescription] = React.useState(
+    () => initialExpense?.description ?? "",
+  );
+  const [category, setCategory] = React.useState(
+    () => initialExpense?.category ?? "",
+  );
+  const [expenseDate, setExpenseDate] = React.useState(
+    () => initialExpense?.expenseDate ?? todayIso,
+  );
   const [assertedTotal, setAssertedTotal] = React.useState("");
 
-  const [payers, setPayers] = React.useState<PayerRow[]>([
-    { userId: defaultUser, amount: "" },
-  ]);
+  const [payers, setPayers] = React.useState<PayerRow[]>(() => {
+    if (initialExpense && initialExpense.payers.length > 0) {
+      return initialExpense.payers.map((p) => ({
+        userId: p.userId,
+        amount: formatMinorToMajor(p.amountMinor, currency),
+      }));
+    }
+    return [{ userId: defaultUser, amount: "" }];
+  });
 
-  const [splitType, setSplitType] = React.useState<SplitType>("EQUAL");
-  const [equalParticipants, setEqualParticipants] = React.useState<string[]>(
-    () => members.map((m) => m.user.id),
+  const [splitType, setSplitType] = React.useState<SplitType>(
+    () => initialExpense?.splitType ?? "EQUAL",
   );
+
+  const [equalParticipants, setEqualParticipants] = React.useState<string[]>(
+    () => {
+      if (initialExpense && initialExpense.splitType === "EQUAL") {
+        return initialExpense.splits.map((s) => s.userId);
+      }
+      return members.map((m) => m.user.id);
+    },
+  );
+
   const [exactParticipants, setExactParticipants] = React.useState<
     ExactParticipantRow[]
-  >(() => members.map((m) => ({ userId: m.user.id, amount: "" })));
+  >(() => {
+    if (initialExpense && initialExpense.splitType === "EXACT") {
+      return members.map((m) => {
+        const found = initialExpense.splits.find((s) => s.userId === m.user.id);
+        return {
+          userId: m.user.id,
+          amount: found ? formatMinorToMajor(found.amountMinor, currency) : "",
+        };
+      });
+    }
+    return members.map((m) => ({ userId: m.user.id, amount: "" }));
+  });
+
   const [percentageParticipants, setPercentageParticipants] = React.useState<
     PercentageParticipantRow[]
-  >(() => members.map((m) => ({ userId: m.user.id, percentage: "" })));
+  >(() => {
+    if (initialExpense && initialExpense.splitType === "PERCENTAGE") {
+      return members.map((m) => {
+        const found = initialExpense.splits.find((s) => s.userId === m.user.id);
+        return {
+          userId: m.user.id,
+          percentage:
+            found?.percentUnits !== null && found?.percentUnits !== undefined
+              ? formatPercentageUnits(BigInt(found.percentUnits))
+              : "",
+        };
+      });
+    }
+    return members.map((m) => ({ userId: m.user.id, percentage: "" }));
+  });
+
+  const [conflictError, setConflictError] = React.useState<{
+    message: string;
+    currentVersion?: number;
+  } | null>(null);
 
   const [confirmDiscardOpen, setConfirmDiscardOpen] = React.useState(false);
 
@@ -161,31 +235,32 @@ function AddExpenseForm({
             equalParticipants,
           );
           isReconciled = true;
-          reconciliationMessage = `Total ${formatMoneyDisplay(payerTotalMinor, currency)} split equally across ${equalParticipants.length} member(s).`;
+          const participantCount = equalParticipants.length;
+          reconciliationMessage = `Split equally across ${participantCount} participant${participantCount === 1 ? "" : "s"} (${formatMoneyDisplay(payerTotalMinor, currency)} total).`;
         }
       } else if (splitType === "EXACT") {
-        let exactAllocatedMinor = 0n;
-        const validExactRows: ExactParticipantRow[] = [];
+        let exactTotalMinor = 0n;
+        const validExactRows: Array<{ userId: string; amount: bigint }> = [];
 
         exactParticipants.forEach((p) => {
           if (!p.amount.trim()) return;
           const minor = parseMajorToMinor(p.amount, currency);
           if (minor !== null && minor > 0n) {
-            exactAllocatedMinor += minor;
-            validExactRows.push(p);
-            computedSplits.set(p.userId, minor);
+            exactTotalMinor += minor;
+            validExactRows.push({ userId: p.userId, amount: minor });
           }
         });
 
         if (validExactRows.length === 0) {
-          reconciliationMessage = "Allocate exact amounts to participants.";
-        } else if (exactAllocatedMinor !== payerTotalMinor) {
-          const diff = payerTotalMinor - exactAllocatedMinor;
+          reconciliationMessage = "Enter exact shares for participants.";
+        } else if (exactTotalMinor !== payerTotalMinor) {
+          const diff = payerTotalMinor - exactTotalMinor;
           reconciliationMessage =
             diff > 0n
-              ? `Exact split is short by ${formatMoneyDisplay(diff, currency)}.`
-              : `Exact split is over by ${formatMoneyDisplay(-diff, currency)}.`;
+              ? `Allocations are short by ${formatMoneyDisplay(diff, currency)}. Must equal ${formatMoneyDisplay(payerTotalMinor, currency)}.`
+              : `Allocations exceed total by ${formatMoneyDisplay(-diff, currency)}. Must equal ${formatMoneyDisplay(payerTotalMinor, currency)}.`;
         } else {
+          validExactRows.forEach((r) => computedSplits.set(r.userId, r.amount));
           isReconciled = true;
           reconciliationMessage = `Exact allocations perfectly match ${formatMoneyDisplay(payerTotalMinor, currency)}.`;
         }
@@ -225,13 +300,17 @@ function AddExpenseForm({
     }
   }
 
-  const isFormDirty =
-    description.trim().length > 0 ||
-    payers.some((p) => p.amount.trim().length > 0) ||
-    category.length > 0;
+  const isFormDirty = isEdit
+    ? description.trim() !== (initialExpense?.description ?? "") ||
+      category !== (initialExpense?.category ?? "") ||
+      expenseDate !== (initialExpense?.expenseDate ?? todayIso) ||
+      splitType !== initialExpense?.splitType
+    : description.trim().length > 0 ||
+      payers.some((p) => p.amount.trim().length > 0) ||
+      category.length > 0;
 
   const handleRequestClose = () => {
-    if (isFormDirty && !createMutation.isPending) {
+    if (isFormDirty && !isPending) {
       setConfirmDiscardOpen(true);
     } else {
       onClose();
@@ -240,7 +319,7 @@ function AddExpenseForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isReconciled || createMutation.isPending) return;
+    if (!isReconciled || isPending) return;
 
     let splitPayload: CreateExpensePayload["split"];
 
@@ -294,30 +373,99 @@ function AddExpenseForm({
       split: splitPayload,
     };
 
-    try {
-      const response = await createMutation.mutateAsync(payload);
-      addToast({
-        title: "Expense recorded",
-        description: `"${response.data.description}" (${formatMoneyDisplay(BigInt(response.data.totalMinor), currency)}) created.`,
-        variant: "success",
-      });
-      onClose();
-      if (onExpenseCreated) {
-        onExpenseCreated(response.data);
+    setConflictError(null);
+
+    if (isEdit && initialExpense) {
+      const updatePayload: UpdateExpensePayload = {
+        ...payload,
+        version: initialExpense.version,
+      };
+
+      try {
+        const response = await updateMutation.mutateAsync(updatePayload);
+        addToast({
+          title: "Expense updated",
+          description: `"${response.data.description}" (${formatMoneyDisplay(BigInt(response.data.totalMinor), currency)}) updated.`,
+          variant: "success",
+        });
+        onClose();
+        if (onExpenseUpdated) {
+          onExpenseUpdated(response.data);
+        }
+      } catch (err) {
+        if (isApiError(err) && err.status === 409) {
+          if (err.code === "VERSION_CONFLICT") {
+            const details = err.details as { currentVersion?: number } | undefined;
+            setConflictError({
+              message:
+                err.message ||
+                "Another group member updated this expense while you were editing. Reload the latest version before saving.",
+              currentVersion: details?.currentVersion,
+            });
+            return;
+          }
+        }
       }
-    } catch {
-      // Handled via mutation state
+    } else {
+      try {
+        const response = await createMutation.mutateAsync(payload);
+        addToast({
+          title: "Expense recorded",
+          description: `"${response.data.description}" (${formatMoneyDisplay(BigInt(response.data.totalMinor), currency)}) created.`,
+          variant: "success",
+        });
+        onClose();
+        if (onExpenseCreated) {
+          onExpenseCreated(response.data);
+        }
+      } catch {
+        // Handled via mutation state
+      }
     }
   };
 
-  const validationErrors = getValidationErrors(createMutation.error);
+  const validationErrors = getValidationErrors(activeError);
 
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6 pt-1">
-        {createMutation.isError && (
+        {conflictError && (
+          <Alert variant="error" className="flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">Version conflict detected</p>
+                <p className="text-xs leading-relaxed">{conflictError.message}</p>
+                {conflictError.currentVersion !== undefined && (
+                  <p className="text-xs font-mono">
+                    Latest server version: v{conflictError.currentVersion} (editing v{initialExpense?.version})
+                  </p>
+                )}
+              </div>
+            </div>
+            {onReloadExpense && (
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setConflictError(null);
+                    onReloadExpense();
+                  }}
+                  className="gap-1.5"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Reload latest version
+                </Button>
+              </div>
+            )}
+          </Alert>
+        )}
+
+        {Boolean(activeError) && !conflictError && (
           <Alert variant="error">
-            {getErrorMessage(createMutation.error)}
+            {getErrorMessage(activeError)}
           </Alert>
         )}
 
@@ -339,7 +487,7 @@ function AddExpenseForm({
           assertedTotal={assertedTotal}
           onAssertedTotalChange={setAssertedTotal}
           assertedTotalError={validationErrors.total}
-          disabled={createMutation.isPending}
+          disabled={isPending}
         />
 
         {/* Section 2: Who Paid */}
@@ -351,14 +499,14 @@ function AddExpenseForm({
           payerTotalMinor={payerTotalMinor}
           errors={payerRowErrors}
           generalError={validationErrors.payers}
-          disabled={createMutation.isPending}
+          disabled={isPending}
         />
 
         {/* Section 3: Split Method */}
         <SplitMethodSelector
           value={splitType}
           onChange={setSplitType}
-          disabled={createMutation.isPending}
+          disabled={isPending}
         />
 
         {/* Split Editor Panes */}
@@ -370,7 +518,7 @@ function AddExpenseForm({
             totalMinor={payerTotalMinor}
             currency={currency}
             error={validationErrors["split.participants"]}
-            disabled={createMutation.isPending}
+            disabled={isPending}
           />
         )}
 
@@ -382,7 +530,7 @@ function AddExpenseForm({
             totalMinor={payerTotalMinor}
             currency={currency}
             generalError={validationErrors["split.participants"]}
-            disabled={createMutation.isPending}
+            disabled={isPending}
           />
         )}
 
@@ -394,7 +542,7 @@ function AddExpenseForm({
             totalMinor={payerTotalMinor}
             currency={currency}
             generalError={validationErrors["split.participants"]}
-            disabled={createMutation.isPending}
+            disabled={isPending}
           />
         )}
 
@@ -418,17 +566,17 @@ function AddExpenseForm({
             type="button"
             variant="outline"
             onClick={handleRequestClose}
-            disabled={createMutation.isPending}
+            disabled={isPending}
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            isLoading={createMutation.isPending}
-            disabled={!isReconciled || createMutation.isPending}
+            isLoading={isPending}
+            disabled={!isReconciled || isPending}
           >
             <Check className="h-4 w-4 mr-1.5" />
-            Submit Expense
+            {isEdit ? "Save Changes" : "Submit Expense"}
           </Button>
         </DialogFooter>
       </form>
@@ -436,8 +584,12 @@ function AddExpenseForm({
       <ConfirmDialog
         open={confirmDiscardOpen}
         onOpenChange={setConfirmDiscardOpen}
-        title="Discard Unsaved Expense?"
-        description="You have entered expense information. If you close now, your changes will not be saved."
+        title={isEdit ? "Discard Expense Edits?" : "Discard Unsaved Expense?"}
+        description={
+          isEdit
+            ? "You have unsaved changes to this expense. Discard them?"
+            : "You have entered expense information. If you close now, your changes will not be saved."
+        }
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={() => {
@@ -456,18 +608,30 @@ export function AddExpenseDialog({
   open,
   onOpenChange,
   onExpenseCreated,
+  initialExpense,
+  onExpenseUpdated,
+  onReloadExpense,
 }: AddExpenseDialogProps) {
+  const isEdit = Boolean(initialExpense);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-[#0F766E]" />
-            Add Group Expense
+            {isEdit ? (
+              <Pencil className="h-5 w-5 text-[#0F766E]" />
+            ) : (
+              <Plus className="h-5 w-5 text-[#0F766E]" />
+            )}
+            {isEdit
+              ? `Edit Expense (v${initialExpense?.version})`
+              : "Add Group Expense"}
           </DialogTitle>
           <DialogDescription>
-            Record a shared expense in {currency} and distribute the shares
-            among group members.
+            {isEdit
+              ? `Update expense details, payers, and split allocations in ${currency}.`
+              : `Record a shared expense in ${currency} and distribute the shares among group members.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -478,6 +642,9 @@ export function AddExpenseDialog({
             members={members}
             onClose={() => onOpenChange(false)}
             onExpenseCreated={onExpenseCreated}
+            initialExpense={initialExpense}
+            onExpenseUpdated={onExpenseUpdated}
+            onReloadExpense={onReloadExpense}
           />
         )}
       </DialogContent>

@@ -78,6 +78,14 @@ export async function createGroup(
             role: "OWNER",
           },
         },
+        groupBalances: {
+          create: {
+            user: {
+              connect: { id: owner.id },
+            },
+            amount: 0n,
+          },
+        },
       },
 
       include: {
@@ -399,7 +407,7 @@ export async function addGroupMember(
         );
       }
 
-      return tx.groupMembership.create({
+      const membership = await tx.groupMembership.create({
         data: {
           groupId,
           userId: targetUser.id,
@@ -418,6 +426,23 @@ export async function addGroupMember(
           },
         },
       });
+
+      await tx.groupBalance.upsert({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: targetUser.id,
+          },
+        },
+        create: {
+          groupId,
+          userId: targetUser.id,
+          amount: 0n,
+        },
+        update: {},
+      });
+
+      return membership;
     });
   } catch (error) {
     if (

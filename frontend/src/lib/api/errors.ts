@@ -14,18 +14,24 @@ export type ApiErrorKind =
 export class ApiError extends Error {
   readonly status: number;
   readonly kind: ApiErrorKind;
+  readonly code?: string;
+  readonly details?: unknown;
   readonly issues: BackendValidationIssue[];
 
   constructor(options: {
     message: string;
     status: number;
     kind: ApiErrorKind;
+    code?: string;
+    details?: unknown;
     issues?: BackendValidationIssue[];
   }) {
     super(options.message);
     this.name = "ApiError";
     this.status = options.status;
     this.kind = options.kind;
+    this.code = options.code;
+    this.details = options.details;
     this.issues = options.issues ?? [];
   }
 }

@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Activity,
+  AlertTriangle,
   ArrowLeftRight,
   LogOut,
   MoreVertical,
@@ -41,9 +42,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { BalancesView } from "@/features/balances/components/balances-view";
 import { AddExpenseDialog } from "@/features/expenses/components/add-expense-dialog";
-import { ExpenseCreatedCard } from "@/features/expenses/components/expense-created-card";
-import type { CreatedExpense } from "@/features/expenses/expenses.types";
+import { ExpenseDetailsDialog } from "@/features/expenses/components/expense-details-dialog";
+import { ExpenseList } from "@/features/expenses/components/expense-list";
+import type { ExpenseItem } from "@/features/expenses/expenses.types";
+import { RecordSettlementDialog } from "@/features/settlements/components/record-settlement-dialog";
+import { SettlementsView } from "@/features/settlements/components/settlements-view";
 import { AddMemberDialog } from "@/features/groups/add-member-dialog";
 import { EditGroupDialog } from "@/features/groups/edit-group-dialog";
 import { EditMemberRoleDialog } from "@/features/groups/edit-member-role-dialog";
@@ -67,14 +72,9 @@ const TABS: ReadonlyArray<{
   comingSoon?: boolean;
 }> = [
   { id: "members", label: "Members", icon: Users },
-  { id: "expenses", label: "Expenses", icon: Receipt, comingSoon: true },
-  { id: "balances", label: "Balances", icon: Scale, comingSoon: true },
-  {
-    id: "settlements",
-    label: "Settlements",
-    icon: ArrowLeftRight,
-    comingSoon: true,
-  },
+  { id: "expenses", label: "Expenses", icon: Receipt },
+  { id: "balances", label: "Balances", icon: Scale },
+  { id: "settlements", label: "Settlements", icon: ArrowLeftRight },
   { id: "activity", label: "Activity", icon: Activity, comingSoon: true },
 ];
 
@@ -87,8 +87,15 @@ export function GroupDetailsPage() {
   const [activeTab, setActiveTab] = React.useState<GroupTab>("members");
   const [addMemberOpen, setAddMemberOpen] = React.useState(false);
   const [addExpenseOpen, setAddExpenseOpen] = React.useState(false);
-  const [latestCreatedExpense, setLatestCreatedExpense] =
-    React.useState<CreatedExpense | null>(null);
+  const [selectedExpenseForDetails, setSelectedExpenseForDetails] =
+    React.useState<ExpenseItem | null>(null);
+  const [selectedExpenseForEdit, setSelectedExpenseForEdit] =
+    React.useState<ExpenseItem | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = React.useState(false);
+  const [recordSettlementOpen, setRecordSettlementOpen] = React.useState(false);
+  const [settlementTargetUserId, setSettlementTargetUserId] = React.useState<
+    string | undefined
+  >(undefined);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
   const [selectedMemberForRole, setSelectedMemberForRole] =
@@ -106,6 +113,7 @@ export function GroupDetailsPage() {
 
   const group = groupDetailsQuery.data;
   const members = membersQuery.data ?? [];
+  const isArchived = Boolean(group?.archivedAt);
 
   const isLoadingInitial =
     (groupDetailsQuery.isLoading && !groupDetailsQuery.data) ||
@@ -290,10 +298,18 @@ export function GroupDetailsPage() {
         backTo={{ label: "Back to My Groups", href: "/groups" }}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => setAddExpenseOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-              Add expense
-            </Button>
+            {!isArchived && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedExpenseForEdit(null);
+                  setAddExpenseOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Add expense
+              </Button>
+            )}
 
             {canManageSettings && (
               <Button
@@ -357,6 +373,16 @@ export function GroupDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Archived Banner */}
+      {isArchived && (
+        <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/80 text-xs text-amber-900 flex items-center gap-2.5">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+          <p>
+            <strong>This group is archived.</strong> You can view existing expenses, audit histories, and balances, but creating new expenses, editing, and deleting are disabled.
+          </p>
+        </div>
+      )}
 
       {/* Section Tabs */}
       <div className="border-b border-[#E7E5E0]">
@@ -541,64 +567,45 @@ export function GroupDetailsPage() {
         </div>
       )}
 
-      {activeTab === "expenses" && (
-        <div className="space-y-4">
-          {latestCreatedExpense ? (
-            <div className="space-y-4">
-              <ExpenseCreatedCard
-                expense={latestCreatedExpense}
-                members={members}
-                onAddAnother={() => setAddExpenseOpen(true)}
-              />
-              <div className="rounded-xl border border-[#E7E5E0] bg-[#FAF8F5]/60 p-4 text-xs text-[#71717A] space-y-1">
-                <p className="font-semibold text-[#18181B] flex items-center gap-1.5">
-                  <Receipt className="h-4 w-4 text-[#0F766E]" />
-                  Historical Expense Ledger Coming Soon
-                </p>
-                <p>
-                  Expense recording is active and validated by the backend engine. A complete historical list of all past expenses, edit revisions, and deletion workflows will appear here once the backend listing APIs are finalized.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Card className="border-dashed border-[#D6D3CD] bg-[#FAF8F5]/40 text-center py-10 px-4">
-              <CardContent className="space-y-4 max-w-md mx-auto">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-[#0F766E]">
-                  <Receipt className="h-6 w-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-[#18181B]">
-                    No Expenses Recorded in This Session
-                  </h3>
-                  <p className="text-xs text-[#71717A] leading-relaxed">
-                    Record shared expenses in {group?.currency} with single or multiple payers and equal, exact, or percentage splits among {members.length} member(s).
-                  </p>
-                </div>
-                <Button onClick={() => setAddExpenseOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add your first expense
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {activeTab === "balances" && (
-        <ComingSoonPanel
-          icon={Scale}
-          title="Group balances"
-          description="View each member's exact net position and simplified repayment breakdown computed from verified financial records."
-          detail="Balances will be calculated on the server in integer minor units once expenses and settlements are enabled."
+      {activeTab === "expenses" && group && (
+        <ExpenseList
+          groupId={group.id}
+          currency={group.currency}
+          members={members}
+          isArchived={isArchived}
+          onAddExpense={() => {
+            setSelectedExpenseForEdit(null);
+            setAddExpenseOpen(true);
+          }}
+          onSelectExpense={(exp) => {
+            setSelectedExpenseForDetails(exp);
+            setDetailsDialogOpen(true);
+          }}
         />
       )}
 
-      {activeTab === "settlements" && (
-        <ComingSoonPanel
-          icon={ArrowLeftRight}
-          title="Settlements"
-          description="Record manual payments between members and track settlement corrections with full reversal history."
-          detail="Settlement recording and audit trails are planned for an upcoming backend release."
+      {activeTab === "balances" && group && (
+        <BalancesView
+          groupId={group.id}
+          members={members}
+          isArchived={isArchived}
+          onRecordSettlement={(targetUserId) => {
+            setSettlementTargetUserId(targetUserId);
+            setRecordSettlementOpen(true);
+          }}
+        />
+      )}
+
+      {activeTab === "settlements" && group && (
+        <SettlementsView
+          groupId={group.id}
+          currency={group.currency}
+          members={members}
+          isArchived={isArchived}
+          onRecordSettlement={() => {
+            setSettlementTargetUserId(undefined);
+            setRecordSettlementOpen(true);
+          }}
         />
       )}
 
@@ -614,15 +621,51 @@ export function GroupDetailsPage() {
       {/* Dialogs */}
       {group && (
         <>
+          <RecordSettlementDialog
+            groupId={group.id}
+            currency={group.currency}
+            members={members}
+            open={recordSettlementOpen}
+            onOpenChange={(isOpen) => {
+              setRecordSettlementOpen(isOpen);
+              if (!isOpen) {
+                setSettlementTargetUserId(undefined);
+              }
+            }}
+            defaultRecipientId={settlementTargetUserId}
+          />
           <AddExpenseDialog
             groupId={group.id}
             currency={group.currency}
             members={members}
             open={addExpenseOpen}
-            onOpenChange={setAddExpenseOpen}
+            onOpenChange={(isOpen) => {
+              setAddExpenseOpen(isOpen);
+              if (!isOpen) {
+                setSelectedExpenseForEdit(null);
+              }
+            }}
+            initialExpense={selectedExpenseForEdit}
             onExpenseCreated={(newExpense) => {
-              setLatestCreatedExpense(newExpense);
+              setSelectedExpenseForDetails(newExpense);
               setActiveTab("expenses");
+            }}
+            onExpenseUpdated={(updatedExpense) => {
+              setSelectedExpenseForDetails(updatedExpense);
+            }}
+          />
+
+          <ExpenseDetailsDialog
+            groupId={group.id}
+            currency={group.currency}
+            expenseId={selectedExpenseForDetails?.id ?? null}
+            members={members}
+            open={detailsDialogOpen}
+            onOpenChange={setDetailsDialogOpen}
+            isArchived={isArchived}
+            onEditExpense={(exp) => {
+              setSelectedExpenseForEdit(exp);
+              setAddExpenseOpen(true);
             }}
           />
 

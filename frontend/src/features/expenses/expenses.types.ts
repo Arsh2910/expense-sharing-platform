@@ -44,18 +44,26 @@ export interface CreateExpensePayload {
   split: SplitPayload;
 }
 
-export interface CreatedExpensePayer {
+export interface UpdateExpensePayload extends CreateExpensePayload {
+  version: number;
+}
+
+export interface DeleteExpensePayload {
+  version: number;
+}
+
+export interface ExpensePayer {
   userId: string;
   amountMinor: number;
 }
 
-export interface CreatedExpenseSplit {
+export interface ExpenseSplit {
   userId: string;
   amountMinor: number;
   percentUnits?: number | string | null;
 }
 
-export interface CreatedExpense {
+export interface ExpenseItem {
   id: string;
   groupId: string;
   currency: string;
@@ -68,8 +76,52 @@ export interface CreatedExpense {
   createdById: string;
   createdAt: string;
   updatedAt: string;
-  payers: CreatedExpensePayer[];
-  splits: CreatedExpenseSplit[];
+  payers: ExpensePayer[];
+  splits: ExpenseSplit[];
+}
+
+export type CreatedExpense = ExpenseItem;
+export type CreatedExpensePayer = ExpensePayer;
+export type CreatedExpenseSplit = ExpenseSplit;
+
+export interface ExpenseListPagination {
+  nextCursor: string | null;
+}
+
+export interface ExpenseListResponse {
+  message: string;
+  data: ExpenseItem[];
+  pagination: ExpenseListPagination;
+}
+
+export interface ExpenseRevisionSnapshot {
+  id: string;
+  groupId: string;
+  description: string;
+  category: string | null;
+  amount: string;
+  splitType: SplitType;
+  expenseDate: string;
+  version: number;
+  createdById: string;
+  deletedAt: string | null;
+  deletedById: string | null;
+  payers: Array<{ userId: string; amount: string }>;
+  splits: Array<{ userId: string; amount: string; percentUnits: string | null }>;
+}
+
+export interface ExpenseRevisionChanges {
+  type: "CREATED" | "UPDATED" | "DELETED";
+  fromVersion?: number;
+  toVersion?: number;
+}
+
+export interface ExpenseRevision {
+  revision: number;
+  snapshot: ExpenseRevisionSnapshot;
+  changes: ExpenseRevisionChanges;
+  createdById: string;
+  createdAt: string;
 }
 
 export const EXPENSE_CATEGORIES: ReadonlyArray<{

@@ -100,6 +100,8 @@ export interface BackendValidationIssue {
 
 export interface ApiErrorPayload {
   message?: string;
+  code?: string;
+  details?: unknown;
   errors?: BackendValidationIssue[];
 }
 

@@ -16,6 +16,10 @@ import type {
   CreateExpenseInput,
   UpdateExpenseInput,
 } from "./expense.schema.js";
+import {
+  lockBalanceRows,
+  recomputeLockedBalances,
+} from "../balances/balance.service.js";
 
 type ExpenseServiceErrorCode =
   | "GROUP_NOT_FOUND"
@@ -362,6 +366,7 @@ export async function createExpense(
       assertNotFutureDate(input.expenseDate);
       const prepared = prepareAllocations(input, group.currency);
       await assertAllocationMembers(tx, groupId, prepared.allocationUserIds);
+      await lockBalanceRows(tx, groupId, prepared.allocationUserIds);
 
       const expense = await tx.expense.create({
         data: {
@@ -398,6 +403,7 @@ export async function createExpense(
           createdById: actorUserId,
         },
       });
+      await recomputeLockedBalances(tx, groupId, prepared.allocationUserIds);
 
       return expenseResponse(expense, group.currency);
     });
@@ -511,12 +517,19 @@ export async function updateExpense(
         ...current.payers.map((payer) => payer.userId),
         ...current.splits.map((split) => split.userId),
       ]);
+      const affectedUserIds = [
+        ...new Set([
+          ...historicalUserIds,
+          ...prepared.allocationUserIds,
+        ]),
+      ];
       await assertAllocationMembers(
         tx,
         groupId,
         prepared.allocationUserIds,
         historicalUserIds,
       );
+      await lockBalanceRows(tx, groupId, affectedUserIds);
 
       const claimed = await tx.expense.updateMany({
         where: {
@@ -573,6 +586,7 @@ export async function updateExpense(
           createdById: actorUserId,
         },
       });
+      await recomputeLockedBalances(tx, groupId, affectedUserIds);
 
       return expenseResponse(updated, group.currency);
     });
@@ -596,6 +610,13 @@ export async function deleteExpense(
     if (!current) {
       throw new ExpenseServiceError("Expense not found", "EXPENSE_NOT_FOUND");
     }
+    const affectedUserIds = [
+      ...new Set([
+        ...current.payers.map((payer) => payer.userId),
+        ...current.splits.map((split) => split.userId),
+      ]),
+    ];
+    await lockBalanceRows(tx, groupId, affectedUserIds);
 
     const deletedAt = new Date();
     const deleted = await tx.expense.updateMany({
@@ -632,6 +653,7 @@ export async function deleteExpense(
         createdById: actorUserId,
       },
     });
+    await recomputeLockedBalances(tx, groupId, affectedUserIds);
 
     return {
       id: expenseId,
