@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../auth/auth.middleware.js";
+import expenseRoutes from "../expenses/expense.routes.js";
 import {
   addGroupMemberController,
   archiveGroupController,
@@ -16,6 +17,7 @@ const router = Router();
 
 router.post("/", authenticate, createGroupController);
 router.get("/", authenticate, listMyGroupsController);
+router.use("/:groupId/expenses", expenseRoutes);
 router.get("/:groupId", authenticate, getGroupDetailsController);
 router.patch("/:groupId", authenticate, updateGroupController);
 router.delete("/:groupId", authenticate, archiveGroupController);

@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -7,7 +6,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
 
 enum UserStatus {
   ACTIVE
@@ -32,37 +30,62 @@ enum VerificationPurpose {
   @@map("verification_purpose")
 }
 
+enum SplitType {
+  EQUAL
+  EXACT
+  PERCENTAGE
+
+  @@map("split_type")
+}
+
+enum IdempotencyStatus {
+  PENDING
+  COMPLETED
+
+  @@map("idempotency_status")
+}
+
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  email        String     @db.VarChar(255)
-  username     String?    @unique @db.VarChar(30)
-  displayName  String     @map("display_name") @db.VarChar(100)
- passwordHash String @map("password_hash") @db.VarChar(255)
-  status       UserStatus @default(ACTIVE)
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  pendingEmail  String? @map("pending_email") @db.VarChar(255)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @db.VarChar(255)
+  username        String?    @unique @db.VarChar(30)
+  displayName     String     @map("display_name") @db.VarChar(100)
+  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  pendingEmail    String?    @map("pending_email") @db.VarChar(255)
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz(6)
 
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  memberships  GroupMembership[]
-  sessions     Session[]
-  verificationTokens VerificationToken[]
+  memberships             GroupMembership[]
+  sessions                Session[]
+  verificationTokens      VerificationToken[]
+  createdExpenses         Expense[]           @relation("ExpenseCreatedBy")
+  deletedExpenses         Expense[]           @relation("ExpenseDeletedBy")
+  expensePayerAllocations ExpensePayer[]
+  expenseSplitAllocations ExpenseSplit[]
+  expenseRevisions        ExpenseRevision[]   @relation("ExpenseRevisionCreatedBy")
+  groupBalances           GroupBalance[]
+  settlementsSent         Settlement[]        @relation("SettlementFromUser")
+  settlementsReceived     Settlement[]        @relation("SettlementToUser")
+  settlementsCreated      Settlement[]        @relation("SettlementCreatedBy")
+  idempotencyKeys         IdempotencyKey[]
 
   @@map("users")
 }
 
 model Session {
-  id               String   @id @default(uuid()) @db.Uuid
-  userId           String   @map("user_id") @db.Uuid
-  refreshTokenHash String   @unique @map("refresh_token_hash") @db.VarChar(128)
-  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.VarChar(128)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
   revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lastUsedAt       DateTime? @map("last_used_at") @db.Timestamptz(6)
-  userAgent        String? @map("user_agent") @db.VarChar(500)
-  ipAddress        String? @map("ip_address") @db.VarChar(64)
-  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent        String?   @map("user_agent") @db.VarChar(500)
+  ipAddress        String?   @map("ip_address") @db.VarChar(64)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -70,14 +93,14 @@ model Session {
 }
 
 model VerificationToken {
-  id         String @id @default(uuid()) @db.Uuid
-  userId     String @map("user_id") @db.Uuid
-  tokenHash  String @unique @map("token_hash") @db.VarChar(128)
+  id         String              @id @default(uuid()) @db.Uuid
+  userId     String              @map("user_id") @db.Uuid
+  tokenHash  String              @unique @map("token_hash") @db.VarChar(128)
   purpose    VerificationPurpose
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
-  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime            @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime?           @map("consumed_at") @db.Timestamptz(6)
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, purpose])
   @@map("verification_tokens")
@@ -86,29 +109,158 @@ model VerificationToken {
 model Group {
   id         String    @id @default(uuid()) @db.Uuid
   name       String    @db.VarChar(100)
-  currency String @db.Char(3) 
+  currency   String    @db.Char(3)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
 
-  memberships GroupMembership[]
+  memberships   GroupMembership[]
+  expenses      Expense[]
+  groupBalances GroupBalance[]
+  settlements   Settlement[]
 
   @@map("groups")
 }
 
 model GroupMembership {
-  id        String     @id @default(uuid()) @db.Uuid
-  userId    String     @map("user_id") @db.Uuid
-  groupId   String     @map("group_id") @db.Uuid
-  role      GroupRole  @default(MEMBER)
+  id      String    @id @default(uuid()) @db.Uuid
+  userId  String    @map("user_id") @db.Uuid
+  groupId String    @map("group_id") @db.Uuid
+  role    GroupRole @default(MEMBER)
 
-  joinedAt  DateTime   @default(now()) @map("joined_at") @db.Timestamptz(6)
-  leftAt    DateTime?  @map("left_at") @db.Timestamptz(6)
+  joinedAt DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt   DateTime? @map("left_at") @db.Timestamptz(6)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
-  group     Group      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@unique([id, groupId])
   @@index([groupId])
   @@index([userId])
   @@map("group_memberships")
+}
+
+model Expense {
+  id          String    @id @default(uuid()) @db.Uuid
+  groupId     String    @map("group_id") @db.Uuid
+  description String    @db.Text
+  category    String?   @db.VarChar(50)
+  amount      BigInt    @db.BigInt
+  splitType   SplitType @map("split_type")
+  expenseDate DateTime  @map("expense_date") @db.Date
+  createdById String    @map("created_by") @db.Uuid
+  version     Int       @default(1)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedById String?   @map("deleted_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  createdBy User              @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  deletedBy User?             @relation("ExpenseDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+  payers    ExpensePayer[]
+  splits    ExpenseSplit[]
+  revisions ExpenseRevision[]
+
+  @@index([groupId, expenseDate(sort: Desc), id], map: "expenses_group_date_idx")
+  @@index([createdById])
+  @@map("expenses")
+}
+
+model ExpensePayer {
+  expenseId String @map("expense_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  amount    BigInt @db.BigInt
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([expenseId, userId])
+  @@index([userId, expenseId])
+  @@map("expense_payers")
+}
+
+model ExpenseSplit {
+  expenseId    String  @map("expense_id") @db.Uuid
+  userId       String  @map("user_id") @db.Uuid
+  amount       BigInt  @db.BigInt
+  percentUnits BigInt? @map("percent_units") @db.BigInt
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([expenseId, userId])
+  @@index([userId, expenseId])
+  @@map("expense_splits")
+}
+
+model ExpenseRevision {
+  id          String   @id @default(uuid()) @db.Uuid
+  expenseId   String   @map("expense_id") @db.Uuid
+  revision    Int
+  snapshot    Json     @db.JsonB
+  changes     Json?    @db.JsonB
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+  createdBy User    @relation("ExpenseRevisionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([expenseId, revision])
+  @@index([createdById])
+  @@map("expense_revisions")
+}
+
+model GroupBalance {
+  groupId   String   @map("group_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  amount    BigInt   @default(0) @db.BigInt
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@map("group_balances")
+}
+
+model Settlement {
+  id          String   @id @default(uuid()) @db.Uuid
+  groupId     String   @map("group_id") @db.Uuid
+  fromUserId  String   @map("from_user_id") @db.Uuid
+  toUserId    String   @map("to_user_id") @db.Uuid
+  amount      BigInt   @db.BigInt
+  settledOn   DateTime @map("settled_on") @db.Date
+  note        String?  @db.VarChar(500)
+  reversesId  String?  @unique @map("reverses_id") @db.Uuid
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group      Group       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  fromUser   User        @relation("SettlementFromUser", fields: [fromUserId], references: [id], onDelete: Restrict)
+  toUser     User        @relation("SettlementToUser", fields: [toUserId], references: [id], onDelete: Restrict)
+  createdBy  User        @relation("SettlementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  reverses   Settlement? @relation("SettlementReversal", fields: [reversesId], references: [id], onDelete: Restrict)
+  reversedBy Settlement? @relation("SettlementReversal")
+
+  @@index([groupId, fromUserId])
+  @@index([groupId, toUserId])
+  @@index([createdById])
+  @@map("settlements")
+}
+
+model IdempotencyKey {
+  userId      String            @map("user_id") @db.Uuid
+  scope       String            @db.VarChar(100)
+  key         String            @db.VarChar(255)
+  requestHash String            @map("request_hash") @db.VarChar(128)
+  resourceId  String?           @map("resource_id") @db.Uuid
+  status      IdempotencyStatus @default(PENDING)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([userId, scope, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
 }

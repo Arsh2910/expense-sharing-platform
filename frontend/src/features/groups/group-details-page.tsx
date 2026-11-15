@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   LogOut,
   MoreVertical,
+  Plus,
   Receipt,
   RefreshCw,
   Scale,
@@ -40,6 +41,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { AddExpenseDialog } from "@/features/expenses/components/add-expense-dialog";
+import { ExpenseCreatedCard } from "@/features/expenses/components/expense-created-card";
+import type { CreatedExpense } from "@/features/expenses/expenses.types";
 import { AddMemberDialog } from "@/features/groups/add-member-dialog";
 import { EditGroupDialog } from "@/features/groups/edit-group-dialog";
 import { EditMemberRoleDialog } from "@/features/groups/edit-member-role-dialog";
@@ -82,6 +86,9 @@ export function GroupDetailsPage() {
 
   const [activeTab, setActiveTab] = React.useState<GroupTab>("members");
   const [addMemberOpen, setAddMemberOpen] = React.useState(false);
+  const [addExpenseOpen, setAddExpenseOpen] = React.useState(false);
+  const [latestCreatedExpense, setLatestCreatedExpense] =
+    React.useState<CreatedExpense | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
   const [selectedMemberForRole, setSelectedMemberForRole] =
@@ -283,6 +290,11 @@ export function GroupDetailsPage() {
         backTo={{ label: "Back to My Groups", href: "/groups" }}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => setAddExpenseOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
+              Add expense
+            </Button>
+
             {canManageSettings && (
               <Button
                 variant="outline"
@@ -530,12 +542,46 @@ export function GroupDetailsPage() {
       )}
 
       {activeTab === "expenses" && (
-        <ComingSoonPanel
-          icon={Receipt}
-          title="Shared expenses"
-          description="Record group expenses in the group's base currency with support for single or multiple payers and equal, exact, or percentage splits."
-          detail="This capability is planned in the Expense Engine API and will connect here without changing your existing group membership."
-        />
+        <div className="space-y-4">
+          {latestCreatedExpense ? (
+            <div className="space-y-4">
+              <ExpenseCreatedCard
+                expense={latestCreatedExpense}
+                members={members}
+                onAddAnother={() => setAddExpenseOpen(true)}
+              />
+              <div className="rounded-xl border border-[#E7E5E0] bg-[#FAF8F5]/60 p-4 text-xs text-[#71717A] space-y-1">
+                <p className="font-semibold text-[#18181B] flex items-center gap-1.5">
+                  <Receipt className="h-4 w-4 text-[#0F766E]" />
+                  Historical Expense Ledger Coming Soon
+                </p>
+                <p>
+                  Expense recording is active and validated by the backend engine. A complete historical list of all past expenses, edit revisions, and deletion workflows will appear here once the backend listing APIs are finalized.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <Card className="border-dashed border-[#D6D3CD] bg-[#FAF8F5]/40 text-center py-10 px-4">
+              <CardContent className="space-y-4 max-w-md mx-auto">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-[#0F766E]">
+                  <Receipt className="h-6 w-6" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-semibold text-[#18181B]">
+                    No Expenses Recorded in This Session
+                  </h3>
+                  <p className="text-xs text-[#71717A] leading-relaxed">
+                    Record shared expenses in {group?.currency} with single or multiple payers and equal, exact, or percentage splits among {members.length} member(s).
+                  </p>
+                </div>
+                <Button onClick={() => setAddExpenseOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add your first expense
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {activeTab === "balances" && (
@@ -568,6 +614,18 @@ export function GroupDetailsPage() {
       {/* Dialogs */}
       {group && (
         <>
+          <AddExpenseDialog
+            groupId={group.id}
+            currency={group.currency}
+            members={members}
+            open={addExpenseOpen}
+            onOpenChange={setAddExpenseOpen}
+            onExpenseCreated={(newExpense) => {
+              setLatestCreatedExpense(newExpense);
+              setActiveTab("expenses");
+            }}
+          />
+
           <AddMemberDialog
             groupId={group.id}
             groupName={group.name}
