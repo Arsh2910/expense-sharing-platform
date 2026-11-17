@@ -21,6 +21,8 @@ const statusByCode: Record<SettlementServiceError["code"], number> = {
   FUTURE_DATE: 422,
   SETTLEMENT_NOT_FOUND: 404,
   ALREADY_REVERSED: 409,
+  IDEMPOTENCY_KEY_REUSED: 409,
+  IDEMPOTENCY_IN_PROGRESS: 409,
 };
 
 function handleSettlementError(error: SettlementServiceError, res: Response) {
@@ -51,11 +53,17 @@ export const createSettlementController: RequestHandler<{
       });
       return;
     }
+    const idempotencyKey = req.header("Idempotency-Key")?.trim();
+    if (idempotencyKey && idempotencyKey.length > 255) {
+      res.status(400).json({ message: "Idempotency-Key is too long" });
+      return;
+    }
 
     const settlement = await createSettlement(
       params.data.groupId,
       actorUserId,
       body.data,
+      idempotencyKey,
     );
     res.status(201).json({
       message: "Settlement recorded successfully",

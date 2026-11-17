@@ -5,6 +5,11 @@ import {
   recomputeLockedBalances,
 } from "../balances/balance.service.js";
 import { expenseMoney, parseMajorAmount, type Money } from "../finance/index.js";
+import {
+  beginIdempotency,
+  completeIdempotency,
+  IdempotencyServiceError,
+} from "../idempotency/idempotency.service.js";
 import type { CreateSettlementInput } from "./settlement.schema.js";
 
 type SettlementErrorCode =
@@ -16,7 +21,9 @@ type SettlementErrorCode =
   | "SAME_USER"
   | "FUTURE_DATE"
   | "SETTLEMENT_NOT_FOUND"
-  | "ALREADY_REVERSED";
+  | "ALREADY_REVERSED"
+  | "IDEMPOTENCY_KEY_REUSED"
+  | "IDEMPOTENCY_IN_PROGRESS";
 
 export class SettlementServiceError extends Error {
   constructor(
@@ -171,9 +178,25 @@ export async function createSettlement(
   groupId: string,
   actorUserId: string,
   input: CreateSettlementInput,
+  idempotencyKey?: string,
 ) {
-  return prisma.$transaction(async (tx) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
     const group = await requireWritableGroup(tx, groupId, actorUserId);
+    const scope = `settlement:create:${groupId}`;
+    const idempotency = await beginIdempotency(
+      tx,
+      actorUserId,
+      scope,
+      idempotencyKey,
+      input,
+    );
+    if (idempotency.replayResourceId) {
+      const replay = await tx.settlement.findFirst({
+        where: { id: idempotency.replayResourceId, groupId },
+      });
+      if (replay) return settlementResponse(replay, group.currency);
+    }
     assertInputDates(input);
     if (input.fromUserId === input.toUserId) {
       throw new SettlementServiceError(
@@ -206,8 +229,26 @@ export async function createSettlement(
       input.fromUserId,
       input.toUserId,
     ]);
+    await completeIdempotency(
+      tx,
+      actorUserId,
+      scope,
+      idempotencyKey,
+      settlement.id,
+    );
     return settlementResponse(settlement, group.currency);
-  });
+    });
+  } catch (error) {
+    if (error instanceof IdempotencyServiceError) {
+      throw new SettlementServiceError(
+        error.message,
+        error.code === "KEY_REUSED"
+          ? "IDEMPOTENCY_KEY_REUSED"
+          : "IDEMPOTENCY_IN_PROGRESS",
+      );
+    }
+    throw error;
+  }
 }
 
 export async function listSettlements(groupId: string, actorUserId: string) {

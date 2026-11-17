@@ -20,6 +20,11 @@ import {
   lockBalanceRows,
   recomputeLockedBalances,
 } from "../balances/balance.service.js";
+import {
+  beginIdempotency,
+  completeIdempotency,
+  IdempotencyServiceError,
+} from "../idempotency/idempotency.service.js";
 
 type ExpenseServiceErrorCode =
   | "GROUP_NOT_FOUND"
@@ -32,7 +37,9 @@ type ExpenseServiceErrorCode =
   | "INVALID_SPLIT"
   | "FUTURE_DATE"
   | "VERSION_CONFLICT"
-  | "INVALID_CURSOR";
+  | "INVALID_CURSOR"
+  | "IDEMPOTENCY_KEY_REUSED"
+  | "IDEMPOTENCY_IN_PROGRESS";
 
 type ExpenseServiceErrorDetails = Readonly<{
   currentVersion?: number;
@@ -359,10 +366,26 @@ export async function createExpense(
   groupId: string,
   actorUserId: string,
   input: CreateExpenseInput,
+  idempotencyKey?: string,
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
       const group = await requireWritableGroup(tx, groupId, actorUserId);
+      const scope = `expense:create:${groupId}`;
+      const idempotency = await beginIdempotency(
+        tx,
+        actorUserId,
+        scope,
+        idempotencyKey,
+        input,
+      );
+      if (idempotency.replayResourceId) {
+        const replay = await tx.expense.findFirst({
+          where: { id: idempotency.replayResourceId, groupId },
+          include: allocationInclude,
+        });
+        if (replay) return expenseResponse(replay, group.currency);
+      }
       assertNotFutureDate(input.expenseDate);
       const prepared = prepareAllocations(input, group.currency);
       await assertAllocationMembers(tx, groupId, prepared.allocationUserIds);
@@ -404,6 +427,13 @@ export async function createExpense(
         },
       });
       await recomputeLockedBalances(tx, groupId, prepared.allocationUserIds);
+      await completeIdempotency(
+        tx,
+        actorUserId,
+        scope,
+        idempotencyKey,
+        expense.id,
+      );
 
       return expenseResponse(expense, group.currency);
     });
@@ -670,6 +700,14 @@ function translateExpenseError(error: unknown): Error {
   }
   if (error instanceof SplitEngineError) {
     return new ExpenseServiceError(error.message, "INVALID_SPLIT");
+  }
+  if (error instanceof IdempotencyServiceError) {
+    return new ExpenseServiceError(
+      error.message,
+      error.code === "KEY_REUSED"
+        ? "IDEMPOTENCY_KEY_REUSED"
+        : "IDEMPOTENCY_IN_PROGRESS",
+    );
   }
   return error instanceof Error ? error : new Error("Unknown expense error");
 }

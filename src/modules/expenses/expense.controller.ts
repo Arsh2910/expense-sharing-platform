@@ -29,6 +29,8 @@ const statusByCode: Record<ExpenseServiceError["code"], number> = {
   FUTURE_DATE: 422,
   VERSION_CONFLICT: 409,
   INVALID_CURSOR: 400,
+  IDEMPOTENCY_KEY_REUSED: 409,
+  IDEMPOTENCY_IN_PROGRESS: 409,
 };
 
 function handleExpenseError(error: ExpenseServiceError, res: Response) {
@@ -67,11 +69,17 @@ export const createExpenseController: RequestHandler<{
       });
       return;
     }
+    const idempotencyKey = req.header("Idempotency-Key")?.trim();
+    if (idempotencyKey && idempotencyKey.length > 255) {
+      res.status(400).json({ message: "Idempotency-Key is too long" });
+      return;
+    }
 
     const expense = await createExpense(
       params.data.groupId,
       actorUserId,
       body.data,
+      idempotencyKey,
     );
     res.status(201).json({
       message: "Expense created successfully",
