@@ -14,6 +14,7 @@ import {
   updateGroupController,
   updateMemberRoleController,
 } from "./group.controller.js";
+import { createInvitationController } from "../invitations/invitation.controller.js";
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.get("/:groupId", authenticate, getGroupDetailsController);
 router.patch("/:groupId", authenticate, updateGroupController);
 router.delete("/:groupId", authenticate, archiveGroupController);
 router.post("/:groupId/members", authenticate, addGroupMemberController);
+router.post("/:groupId/invitations", authenticate, createInvitationController);
 router.get("/:groupId/members", authenticate, listGroupMembersController);
 router.delete("/:groupId/members/:targetUserId", authenticate, removeGroupMemberController);
 router.patch("/:groupId/members/:targetUserId", authenticate, updateMemberRoleController);

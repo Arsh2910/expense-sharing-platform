@@ -45,6 +45,24 @@ enum IdempotencyStatus {
   @@map("idempotency_status")
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+
+  @@map("invitation_status")
+}
+
+enum EmailOutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+
+  @@map("email_outbox_status")
+}
+
 model User {
   id              String     @id @default(uuid()) @db.Uuid
   email           String     @db.VarChar(255)
@@ -71,6 +89,8 @@ model User {
   settlementsReceived     Settlement[]        @relation("SettlementToUser")
   settlementsCreated      Settlement[]        @relation("SettlementCreatedBy")
   idempotencyKeys         IdempotencyKey[]
+  sentInvitations         GroupInvitation[] @relation("InvitationInvitedBy")
+  receivedInvitations     GroupInvitation[] @relation("InvitationInvitedUser")
 
   @@map("users")
 }
@@ -117,6 +137,7 @@ model Group {
   expenses      Expense[]
   groupBalances GroupBalance[]
   settlements   Settlement[]
+  invitations   GroupInvitation[]
 
   @@map("groups")
 }
@@ -263,4 +284,44 @@ model IdempotencyKey {
   @@id([userId, scope, key])
   @@index([createdAt])
   @@map("idempotency_keys")
+}
+
+model GroupInvitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  groupId       String           @map("group_id") @db.Uuid
+  invitedUserId String?          @map("invited_user_id") @db.Uuid
+  invitedEmail  String?          @map("invited_email") @db.VarChar(255)
+  tokenHash     String?          @unique @map("token_hash") @db.VarChar(128)
+  invitedById   String           @map("invited_by") @db.Uuid
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt    DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  declinedAt    DateTime?        @map("declined_at") @db.Timestamptz(6)
+  revokedAt     DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedUser User? @relation("InvitationInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedBy   User  @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([groupId, status])
+  @@index([invitedUserId, status])
+  @@index([invitedEmail, status])
+  @@map("group_invitations")
+}
+
+model EmailOutbox {
+  id          String           @id @default(uuid()) @db.Uuid
+  type        String           @db.VarChar(50)
+  recipient   String           @db.VarChar(255)
+  payload     Json             @db.JsonB
+  status      EmailOutboxStatus @default(PENDING)
+  attempts    Int              @default(0)
+  availableAt DateTime         @default(now()) @map("available_at") @db.Timestamptz(6)
+  sentAt      DateTime?        @map("sent_at") @db.Timestamptz(6)
+  lastError   String?          @map("last_error") @db.Text
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, availableAt])
+  @@map("email_outbox")
 }
