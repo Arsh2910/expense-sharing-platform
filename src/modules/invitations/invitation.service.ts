@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { hashToken } from "../auth/token.service.js";
+import { enqueueEmailOutbox } from "../../queues/email.queue.js";
 import type { CreateInvitationInput } from "./invitation.schema.js";
 
 type InvitationErrorCode =
@@ -80,7 +81,7 @@ export async function createInvitation(
   actorUserId: string,
   input: CreateInvitationInput,
 ) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const group = await requireInvitePermission(tx, groupId, actorUserId);
     const target =
       "username" in input
@@ -141,8 +142,9 @@ export async function createInvitation(
       },
       include: invitationInclude,
     });
+    let outboxId: string | undefined;
     if (!invitedUserId) {
-      await tx.emailOutbox.create({
+      const outbox = await tx.emailOutbox.create({
         data: {
           type: "GROUP_INVITATION",
           recipient: invitedEmail!,
@@ -154,11 +156,21 @@ export async function createInvitation(
           },
         },
       });
+      outboxId = outbox.id;
     }
     // The raw token is intentionally not returned through the API. It is
     // available only to the trusted delivery worker through the outbox.
-    return response(invitation);
+    return { invitation: response(invitation), outboxId };
   });
+  if (result.outboxId && process.env.REDIS_URL) {
+    try {
+      await enqueueEmailOutbox(result.outboxId);
+    } catch (error) {
+      // The outbox is durable; a later reconciler can enqueue it again.
+      console.error("Could not enqueue invitation email", error);
+    }
+  }
+  return result.invitation;
 }
 
 export async function listMyInvitations(userId: string) {
