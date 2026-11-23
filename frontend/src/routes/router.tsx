@@ -10,6 +10,7 @@ import { VerifyPendingPage } from "@/features/auth/verify-pending-page";
 import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { DevApiTestingPage } from "@/features/dev/dev-api-page";
 import { GroupDetailsPage } from "@/features/groups/group-details-page";
+import { NotificationsPage } from "@/features/notifications/notifications-page";
 import { InvitationsPage } from "@/features/invitations/invitations-page";
 import { GroupsListPage } from "@/features/groups/groups-list-page";
 import { AccountSettingsPage } from "@/features/settings/settings-page";
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
               { path: "/", element: <DashboardPage /> },
               { path: "/groups", element: <GroupsListPage /> },
               { path: "/groups/:groupId", element: <GroupDetailsPage /> },
+              { path: "/notifications", element: <NotificationsPage /> },
               { path: "/invitations", element: <InvitationsPage /> },
               { path: "/invitations/accept", element: <InvitationsPage fromEmail /> },
               { path: "/activity", element: <ActivityPage /> },

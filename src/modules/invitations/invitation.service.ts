@@ -135,6 +135,12 @@ export async function createInvitation(groupId: string, actorUserId: string, inp
         },
         include: invitationInclude,
       });
+      if (target) {
+        await tx.notification.create({
+          data: { recipientId: target.id, invitationId: invitation.id },
+        });
+      }
+
       const outboxId = invitedEmail && token
         ? await createEmailOutbox(tx, invitation, invitedEmail, token)
         : undefined;

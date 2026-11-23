@@ -12,7 +12,8 @@ import { invitationsApi, invitationsKeys, type Invitation } from "./invitations.
 
 export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) {
   const [params] = useSearchParams();
-  const linkedId = fromEmail ? params.get("invitationId") : null;
+  const linkedId = params.get("invitationId");
+  const focused = fromEmail || Boolean(linkedId);
   const token = fromEmail ? params.get("token") : null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -32,14 +33,14 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
       }
     },
   });
-  const invitations = fromEmail
-    ? inbox.data?.filter((invitation) => invitation.id === linkedId && Boolean(token))
+  const invitations = focused
+    ? inbox.data?.filter((invitation) => invitation.id === linkedId && (!fromEmail || Boolean(token)))
     : inbox.data;
 
   return (
     <div className="space-y-5">
-      <PageHeader title={fromEmail ? "Review invitation" : "Invitations"}
-        backTo={fromEmail ? { href: "/invitations", label: "All invitations" } : undefined} />
+      <PageHeader title={focused ? "Review invitation" : "Invitations"}
+        backTo={focused ? { href: "/invitations", label: "All invitations" } : undefined} />
       {inbox.isPending && <p role="status">Loading invitations…</p>}
       {inbox.isError && <Alert variant="error">{getErrorMessage(inbox.error)}</Alert>}
       {response.isError && (
@@ -54,7 +55,7 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
       {invitations?.length === 0 && (
         <Alert>{fromEmail
           ? "This invitation is unavailable. Check that you signed in with the email address that received it."
-          : "You have no pending invitations."}</Alert>
+          : focused ? "This invitation is no longer pending." : "You have no pending invitations."}</Alert>
       )}
       {invitations?.map((invitation) => (
         <Card key={invitation.id}>

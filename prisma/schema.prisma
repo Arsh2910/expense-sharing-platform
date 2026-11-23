@@ -91,6 +91,7 @@ model User {
   settlementsReceived     Settlement[]        @relation("SettlementToUser")
   settlementsCreated      Settlement[]        @relation("SettlementCreatedBy")
   idempotencyKeys         IdempotencyKey[]
+  notifications           Notification[]
   sentInvitations         GroupInvitation[] @relation("InvitationInvitedBy")
   receivedInvitations     GroupInvitation[] @relation("InvitationInvitedUser")
 
@@ -305,6 +306,7 @@ model GroupInvitation {
   group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   invitedUser User? @relation("InvitationInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
   invitedBy   User  @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+  notification Notification?
 
   @@index([groupId, status])
   @@index([invitedUserId, status])
@@ -326,4 +328,19 @@ model EmailOutbox {
 
   @@index([status, availableAt])
   @@map("email_outbox")
+}
+
+model Notification {
+  id           String    @id @default(uuid()) @db.Uuid
+  recipientId  String    @map("recipient_id") @db.Uuid
+  invitationId String    @unique @map("invitation_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt       DateTime? @map("read_at") @db.Timestamptz(6)
+
+  recipient  User            @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  invitation GroupInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([recipientId, readAt])
+  @@map("notifications")
 }

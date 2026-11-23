@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { BrandMark } from "@/features/auth/auth-layout";
 import { useLogoutMutation } from "@/features/auth/auth.queries";
 import { useAuth } from "@/hooks/use-auth";
@@ -211,6 +212,7 @@ export function AppShell() {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
