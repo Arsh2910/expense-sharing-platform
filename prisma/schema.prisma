@@ -50,6 +50,7 @@ enum InvitationStatus {
   ACCEPTED
   DECLINED
   REVOKED
+  EXPIRED
 
   @@map("invitation_status")
 }
@@ -59,6 +60,7 @@ enum EmailOutboxStatus {
   PROCESSING
   SENT
   FAILED
+  DEAD
 
   @@map("email_outbox_status")
 }

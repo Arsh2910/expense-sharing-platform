@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { prisma } from "../lib/prisma.js";
-import { deliverEmailOutbox, reconcileEmailOutbox } from "../modules/email/email-outbox.service.js";
+import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../modules/email/email-outbox.service.js";
+import { expireInvitations } from "../modules/invitations/invitation.service.js";
 import { emailQueueName, redisConnection } from "../queues/email.queue.js";
 
 const worker = new Worker<{ outboxId: string }>(
@@ -13,8 +14,18 @@ worker.on("failed", (job, error) => console.error(`Email job failed: ${job?.id}`
 worker.on("error", (error) => console.error("Email worker error", error));
 
 let reconciliation: Promise<void> | undefined;
+let nextCleanupAt = 0;
+
+async function reconcileAndMaintain() {
+  await expireInvitations();
+  await reconcileEmailOutbox();
+  if (Date.now() >= nextCleanupAt) {
+    await pruneCompletedEmails();
+    nextCleanupAt = Date.now() + 60 * 60_000;
+  }
+}
 function reconcile() {
-  reconciliation ??= reconcileEmailOutbox()
+  reconciliation ??= reconcileAndMaintain()
     .catch((error) => console.error("Email outbox reconciliation failed", error))
     .finally(() => { reconciliation = undefined; });
 }

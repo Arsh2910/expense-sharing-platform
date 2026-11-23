@@ -1,5 +1,4 @@
 import { Resend } from "resend";
-import { prisma } from "../../lib/prisma.js";
 
 export type InvitationEmail = Readonly<{
   recipient: string;
@@ -10,7 +9,7 @@ export type InvitationEmail = Readonly<{
 }>;
 
 export type VerificationEmail = Readonly<{
-  userId: string;
+  recipient: string;
   token: string;
   purpose: "EMAIL" | "EMAIL_CHANGE";
 }>;
@@ -43,7 +42,7 @@ function invitationHtml(input: InvitationEmail) {
   return `
     <h1>You're invited to join ${escapeHtml(input.groupName)}</h1>
     <p>Open the link below to review and accept the invitation.</p>
-    <p><a href="${url}">Accept invitation</a></p>
+    <p><a href="${escapeHtml(url)}">Accept invitation</a></p>
     <p>This invitation expires on ${escapeHtml(input.expiresAt)}.</p>
   `;
 }
@@ -51,7 +50,7 @@ function invitationHtml(input: InvitationEmail) {
 function verificationHtml(input: VerificationEmail) {
   const url = `${getAppBaseUrl()}/verify-email?token=${encodeURIComponent(input.token)}`;
   const subject = input.purpose === "EMAIL_CHANGE" ? "Confirm your new email address" : "Verify your email address";
-  return `<h1>${subject}</h1><p><a href="${url}">Continue</a></p>`;
+  return `<h1>${subject}</h1><p><a href="${escapeHtml(url)}">Continue</a></p>`;
 }
 
 function escapeHtml(value: string) {
@@ -70,14 +69,12 @@ export async function sendInvitationEmail(input: InvitationEmail, idempotencyKey
   if (error) throw new EmailDeliveryError(error.message);
 }
 
-export async function sendVerificationEmail(input: VerificationEmail) {
-  const user = await prisma.user.findUnique({ where: { id: input.userId }, select: { email: true } });
-  if (!user) throw new EmailDeliveryError("Cannot send verification email to an unknown user");
+export async function sendVerificationEmail(input: VerificationEmail, idempotencyKey: string) {
   const { error } = await getResend().emails.send({
     from: getFromAddress(),
-    to: [user.email],
+    to: [input.recipient],
     subject: input.purpose === "EMAIL_CHANGE" ? "Confirm your new email address" : "Verify your email address",
     html: verificationHtml(input),
-  });
+  }, { idempotencyKey });
   if (error) throw new EmailDeliveryError(error.message);
 }

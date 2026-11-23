@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Mail,
   Settings,
   Users,
   X,
@@ -37,6 +38,7 @@ interface NavItem {
 const NAV_ITEMS: readonly NavItem[] = [
   { label: "Overview", to: "/", icon: LayoutDashboard, end: true },
   { label: "My Groups", to: "/groups", icon: Users },
+  { label: "Invitations", to: "/invitations", icon: Mail },
   { label: "Activity", to: "/activity", icon: Activity },
   { label: "Account Settings", to: "/settings", icon: Settings },
   ...(import.meta.env.DEV

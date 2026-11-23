@@ -57,13 +57,14 @@ import {
   useGroupMembersQuery,
   useRemoveGroupMemberMutation,
 } from "@/features/groups/groups.queries";
+import { GroupInvitations } from "@/features/invitations/group-invitations";
 import { RoleBadge } from "@/features/groups/role-badge";
 import { getErrorMessage, isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, getCurrencyLabel } from "@/lib/utils/format";
 import type { GroupMember } from "@/types/api";
 
-type GroupTab = "members" | "expenses" | "balances" | "settlements" | "activity";
+type GroupTab = "invitations" | "members" | "expenses" | "balances" | "settlements" | "activity";
 
 const TABS: ReadonlyArray<{
   id: GroupTab;
@@ -72,6 +73,7 @@ const TABS: ReadonlyArray<{
   comingSoon?: boolean;
 }> = [
   { id: "members", label: "Members", icon: Users },
+  { id: "invitations", label: "Invitations", icon: UserPlus },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "balances", label: "Balances", icon: Scale },
   { id: "settlements", label: "Settlements", icon: ArrowLeftRight },
@@ -390,7 +392,7 @@ export function GroupDetailsPage() {
           aria-label="Group sections"
           className="-mb-px flex gap-1 overflow-x-auto"
         >
-          {TABS.map((tab) => {
+          {TABS.filter((tab) => tab.id !== "invitations" || canAddMembers).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -565,6 +567,10 @@ export function GroupDetailsPage() {
             </CardHeader>
           </Card>
         </div>
+      )}
+
+      {activeTab === "invitations" && canAddMembers && group && (
+        <GroupInvitations groupId={group.id} archived={isArchived} />
       )}
 
       {activeTab === "expenses" && group && (

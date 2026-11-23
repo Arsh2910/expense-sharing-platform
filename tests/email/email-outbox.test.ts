@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../src/lib/prisma.js";
-import { deliverEmailOutbox, reconcileEmailOutbox } from "../../src/modules/email/email-outbox.service.js";
+import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../../src/modules/email/email-outbox.service.js";
 import { sendInvitationEmail } from "../../src/modules/email/email.service.js";
 import { enqueueEmailOutboxBatch } from "../../src/queues/email.queue.js";
 
 vi.mock("../../src/lib/prisma.js", () => ({
-  prisma: { emailOutbox: { findMany: vi.fn(), updateManyAndReturn: vi.fn(), updateMany: vi.fn() } },
+  prisma: {
+    emailOutbox: { findMany: vi.fn(), updateManyAndReturn: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+    groupInvitation: { findFirst: vi.fn() },
+    verificationToken: { findFirst: vi.fn() },
+  },
 }));
 vi.mock("../../src/modules/email/email.service.js", () => ({ sendInvitationEmail: vi.fn() }));
 vi.mock("../../src/queues/email.queue.js", () => ({ enqueueEmailOutboxBatch: vi.fn() }));
@@ -33,6 +37,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
   vi.setSystemTime(now);
+  vi.mocked(prisma.groupInvitation.findFirst).mockResolvedValue({ id: "invitation-id" } as never);
 });
 afterEach(() => vi.useRealTimers());
 
@@ -44,10 +49,8 @@ describe("email outbox", () => {
     expect(prisma.emailOutbox.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         availableAt: { lte: now },
-        OR: [
-          { status: "PROCESSING" },
-          { status: { in: ["PENDING", "FAILED"] }, attempts: { lt: 5 } },
-        ],
+        attempts: { lt: 5 },
+        status: { in: ["PENDING", "FAILED", "PROCESSING"] },
       },
     }));
     expect(enqueueEmailOutboxBatch).toHaveBeenCalledWith([record.id]);
@@ -97,6 +100,44 @@ describe("email outbox", () => {
 
     await expect(deliverEmailOutbox(record.id)).rejects.toThrow("Invitation email expired");
     expect(sendInvitationEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not send an outbox row after its invitation is revoked or replaced", async () => {
+    vi.mocked(prisma.emailOutbox.updateManyAndReturn).mockResolvedValue([record]);
+    vi.mocked(prisma.groupInvitation.findFirst).mockResolvedValue(null);
+
+    await expect(deliverEmailOutbox(record.id)).rejects.toThrow("Invitation is no longer current");
+    expect(sendInvitationEmail).not.toHaveBeenCalled();
+    expect(prisma.emailOutbox.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: "DEAD" }),
+    }));
+  });
+
+  it("retires exhausted claims before re-enqueueing eligible work", async () => {
+    vi.mocked(prisma.emailOutbox.findMany).mockResolvedValue([]);
+    await reconcileEmailOutbox();
+
+    expect(prisma.emailOutbox.updateMany).toHaveBeenCalledWith({
+      where: {
+        attempts: { gte: 5 },
+        OR: [{ status: "FAILED" }, { status: "PROCESSING", availableAt: { lte: now } }],
+      },
+      data: { status: "DEAD" },
+    });
+  });
+
+  it("prunes only terminal invitation and verification email rows after their retention period", async () => {
+    await pruneCompletedEmails();
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    expect(prisma.emailOutbox.deleteMany).toHaveBeenCalledWith({
+      where: {
+        type: { in: ["GROUP_INVITATION", "EMAIL_VERIFICATION"] },
+        OR: [
+          { status: "SENT", sentAt: { lt: cutoff } },
+          { status: "DEAD", availableAt: { lt: cutoff } },
+        ],
+      },
+    });
   });
 
   it("keeps an accepted send recoverable if saving SENT fails", async () => {

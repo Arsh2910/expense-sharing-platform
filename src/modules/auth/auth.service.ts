@@ -40,44 +40,34 @@ export class AuthServiceError extends Error {
 }
 
 export interface RegistrationVerification {
-  issue(userId: string, purpose?: "EMAIL" | "EMAIL_CHANGE"): Promise<void>;
   consume(token: string): Promise<string>;
 }
 
-export interface VerificationDelivery {
-  send(input: {
-    userId: string;
-    token: string;
-    purpose: "EMAIL" | "EMAIL_CHANGE";
-  }): Promise<void>;
-}
-
-export const verificationDelivery: VerificationDelivery = {
-  async send() {
-    throw new AuthServiceError(
-      "Email verification delivery is not configured",
-      "EMAIL_DELIVERY_UNAVAILABLE",
-    );
-  },
-};
-
-export function setVerificationDelivery(delivery: VerificationDelivery): void {
-  verificationDelivery.send = delivery.send;
+async function queueVerification(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  recipient: string,
+  purpose: "EMAIL" | "EMAIL_CHANGE",
+) {
+  const token = randomBytes(32).toString("base64url");
+  await tx.verificationToken.updateMany({
+    where: { userId, purpose, consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  await tx.verificationToken.create({
+    data: {
+      userId,
+      tokenHash: hashToken(token),
+      purpose,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    },
+  });
+  await tx.emailOutbox.create({
+    data: { type: "EMAIL_VERIFICATION", recipient, payload: { userId, token, purpose } },
+  });
 }
 
 export const registrationVerification: RegistrationVerification = {
-  async issue(userId, purpose = "EMAIL") {
-    const token = randomBytes(32).toString("base64url");
-    await prisma.verificationToken.create({
-      data: {
-        userId,
-        tokenHash: hashToken(token),
-        purpose,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      },
-    });
-    await verificationDelivery.send({ userId, token, purpose });
-  },
   async consume(token) {
     const record = await prisma.verificationToken.findFirst({
       where: {
@@ -86,7 +76,7 @@ export const registrationVerification: RegistrationVerification = {
         consumedAt: null,
         expiresAt: { gt: new Date() },
       },
-      include: { user: { select: { pendingEmail: true } } },
+      include: { user: { select: { email: true, pendingEmail: true } } },
     });
     if (!record)
       throw new AuthServiceError(
@@ -95,6 +85,26 @@ export const registrationVerification: RegistrationVerification = {
       );
     await prisma.$transaction(async (tx) => {
       const consumedAt = new Date();
+      const newEmail = record.purpose === "EMAIL_CHANGE" ? record.user.pendingEmail : null;
+      if (record.purpose === "EMAIL_CHANGE" && !newEmail) {
+        throw new AuthServiceError("Invalid or expired verification token", "TOKEN_INVALID");
+      }
+      const updated = await tx.user.updateMany({
+        where: {
+          id: record.userId,
+          status: "ACTIVE",
+          deletedAt: null,
+          email: record.user.email,
+          ...(newEmail ? { pendingEmail: newEmail } : {}),
+        },
+        data: {
+          emailVerifiedAt: consumedAt,
+          ...(newEmail ? { email: newEmail, pendingEmail: null } : {}),
+        },
+      });
+      if (updated.count !== 1) {
+        throw new AuthServiceError("Invalid or expired verification token", "TOKEN_INVALID");
+      }
       const claimed = await tx.verificationToken.updateMany({
         where: {
           id: record.id,
@@ -110,18 +120,6 @@ export const registrationVerification: RegistrationVerification = {
           "TOKEN_INVALID",
         );
       }
-
-      await tx.user.update({
-        where: { id: record.userId },
-        data:
-          record.purpose === "EMAIL_CHANGE" && record.user.pendingEmail
-            ? {
-                email: record.user.pendingEmail,
-                pendingEmail: null,
-                emailVerifiedAt: consumedAt,
-              }
-            : { emailVerifiedAt: consumedAt },
-      });
     });
     return record.userId;
   },
@@ -149,16 +147,15 @@ export async function registerUser(
   meta?: { userAgent?: string; ipAddress?: string },
 ) {
   try {
-    const user = await prisma.user.create({
-      data: {
-        email: input.email,
-        displayName: input.displayName,
-        passwordHash: await bcrypt.hash(input.password, 12),
-      },
-      select: publicUser,
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    return await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email: input.email, displayName: input.displayName, passwordHash },
+        select: publicUser,
+      });
+      await queueVerification(tx, user.id, user.email, "EMAIL");
+      return { user };
     });
-    await registrationVerification.issue(user.id);
-    return { user };
   } catch (error) {
     if (isCode(error, "P2002"))
       throw new AuthServiceError(
@@ -348,13 +345,15 @@ export async function changeEmail(
   if (!user || !(await bcrypt.compare(password, user.passwordHash)))
     throw new AuthServiceError("Password is incorrect", "PASSWORD_INVALID");
   try {
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { pendingEmail: email },
-      select: publicUser,
+    return await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: { pendingEmail: email },
+        select: publicUser,
+      });
+      await queueVerification(tx, user.id, email, "EMAIL_CHANGE");
+      return user;
     });
-    await registrationVerification.issue(userId, "EMAIL_CHANGE");
-    return user;
   } catch (error) {
     if (isCode(error, "P2002"))
       throw new AuthServiceError(
