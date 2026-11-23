@@ -1,12 +1,21 @@
 import { apiRequest } from "@/lib/api/client";
 
-interface NotificationItem {
+export type NotificationItem = {
   id: string;
-  invitationId: string;
   groupName: string;
   createdAt: string;
   readAt: string | null;
-}
+} & (
+  | { type: "INVITATION"; invitationId: string }
+  | {
+      type: "EXPENSE_CREATED" | "EXPENSE_UPDATED" | "EXPENSE_DELETED";
+      expenseId: string;
+      groupId: string;
+      expenseDescription: string | null;
+      expenseDeleted: boolean;
+    }
+  | { type: "SETTLEMENT_RECORDED" | "SETTLEMENT_REVERSED"; settlementId: string; groupId: string }
+);
 
 interface NotificationPage {
   items: NotificationItem[];

@@ -248,6 +248,26 @@ describe("Settlement APIs", () => {
     expect(byUser.get(owner.user.id)).toMatchObject({ balanceMinor: -300 });
   });
 
+  it("creates one notification when identical settlement requests race", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const key = crypto.randomUUID();
+    const payload = {
+      fromUserId: owner.user.id, toUserId: member.user.id, amount: "5.00", settledOn: today(),
+    };
+    const submit = () => request(app).post(`/api/groups/${groupId}/settlements`)
+      .set("Authorization", owner.authHeader).set("Idempotency-Key", key).send(payload);
+    const results = await Promise.all([submit(), submit()]);
+    expect(results.some((result) => result.status === 201)).toBe(true);
+    expect(results.every((result) => [201, 409].includes(result.status))).toBe(true);
+    const replay = await submit().expect(201);
+    expect(await prisma.settlement.count({ where: { groupId } })).toBe(1);
+    const inbox = await request(app).get("/api/notifications").set("Authorization", member.authHeader).expect(200);
+    expect(inbox.body.data.items).toEqual([expect.objectContaining({
+      type: "SETTLEMENT_RECORDED", groupId, settlementId: replay.body.data.id,
+    })]);
+    expect(await prisma.notification.count({ where: { recipientId: owner.user.id } })).toBe(0);
+  });
+
   it("allows only one reversal per settlement", async () => {
     const { owner, member, groupId } = await createGroupWithMember();
     const created = await createSettlement(
@@ -257,10 +277,18 @@ describe("Settlement APIs", () => {
       member.user.id,
     );
     const path = `/api/groups/${groupId}/settlements/${created.body.data.id}/reverse`;
-    const first = await request(app).post(path).set("Authorization", owner.authHeader);
-    expect(first.status).toBe(201);
-    const second = await request(app).post(path).set("Authorization", owner.authHeader);
-    expect(second.status).toBe(409);
-    expect(second.body.code).toBe("ALREADY_REVERSED");
+    const outsider = await createTestUser();
+    await request(app).post(path).set("Authorization", outsider.authHeader).expect(403);
+    expect(await prisma.settlement.count({ where: { reversesId: created.body.data.id } })).toBe(0);
+    const reverse = () => request(app).post(path).set("Authorization", owner.authHeader);
+    const results = await Promise.all([reverse(), reverse()]);
+    expect(results.map(({ status }) => status).sort()).toEqual([201, 409]);
+    expect(results.find(({ status }) => status === 409)?.body.code).toBe("ALREADY_REVERSED");
+    const reversal = results.find(({ status }) => status === 201)?.body.data;
+    const inbox = await request(app).get("/api/notifications").set("Authorization", member.authHeader).expect(200);
+    expect(inbox.body.data.items).toEqual([
+      expect.objectContaining({ type: "SETTLEMENT_REVERSED", groupId, settlementId: reversal.id }),
+      expect.objectContaining({ type: "SETTLEMENT_RECORDED", groupId, settlementId: created.body.data.id }),
+    ]);
   });
 });

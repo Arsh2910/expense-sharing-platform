@@ -4,11 +4,23 @@ import { prisma } from "../../lib/prisma.js";
 const pageSize = 20;
 const notificationSelect = {
   id: true,
-  invitationId: true,
   createdAt: true,
   readAt: true,
-  invitation: { select: { group: { select: { name: true } } } },
+  invitation: { select: { id: true, group: { select: { name: true } } } },
+  settlement: { select: { id: true, groupId: true, reversesId: true, group: { select: { name: true } } } },
+  expenseRevision: { select: {
+    revision: true,
+    changes: true,
+    snapshot: true,
+    expense: { select: { id: true, groupId: true, deletedAt: true, group: { select: { name: true } } } },
+  } },
 } satisfies Prisma.NotificationSelect;
+
+function jsonString(value: Prisma.JsonValue, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const field = value[key];
+  return typeof field === "string" ? field : undefined;
+}
 
 export async function listNotifications(recipientId: string, after?: string) {
   if (after && !await prisma.notification.findFirst({
@@ -23,10 +35,32 @@ export async function listNotifications(recipientId: string, after?: string) {
     take: pageSize + 1,
     select: notificationSelect,
   });
-  const items = rows.slice(0, pageSize).map(({ invitation, ...notification }) => ({
-    ...notification,
-    groupName: invitation.group.name,
-  }));
+  const items = rows.slice(0, pageSize).map(({ invitation, settlement, expenseRevision, ...notification }) => {
+    if (expenseRevision) {
+      const { expense } = expenseRevision;
+      const action = jsonString(expenseRevision.changes, "type");
+      return {
+        ...notification,
+        type: action === "DELETED" ? "EXPENSE_DELETED" as const
+          : expenseRevision.revision === 1 ? "EXPENSE_CREATED" as const : "EXPENSE_UPDATED" as const,
+        expenseId: expense.id,
+        groupId: expense.groupId,
+        groupName: expense.group.name,
+        expenseDescription: jsonString(expenseRevision.snapshot, "description") ?? null,
+        expenseDeleted: expense.deletedAt !== null,
+      };
+    }
+    if (settlement) {
+      return {
+        ...notification,
+        type: settlement.reversesId ? "SETTLEMENT_REVERSED" as const : "SETTLEMENT_RECORDED" as const,
+        settlementId: settlement.id,
+        groupId: settlement.groupId,
+        groupName: settlement.group.name,
+      };
+    }
+    return { ...notification, type: "INVITATION" as const, invitationId: invitation!.id, groupName: invitation!.group.name };
+  });
   return {
     items,
     nextCursor: rows.length > pageSize ? items[items.length - 1].id : null,

@@ -16,7 +16,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +86,18 @@ export function GroupDetailsPage() {
   const { user } = useAuth();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = React.useState<GroupTab>("members");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedExpenseId = searchParams.get("tab") === "expenses" ? searchParams.get("expenseId") : null;
+  const requestedTab = TABS.find((tab) => tab.id === searchParams.get("tab"))?.id ?? "members";
+  function setActiveTab(tab: GroupTab) {
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete("expenseId");
+      if (tab === "members") next.delete("tab");
+      else next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  }
   const [addMemberOpen, setAddMemberOpen] = React.useState(false);
   const [addExpenseOpen, setAddExpenseOpen] = React.useState(false);
   const [selectedExpenseForDetails, setSelectedExpenseForDetails] =
@@ -217,6 +228,7 @@ export function GroupDetailsPage() {
   const isAdmin = myRole === "ADMIN";
   const canManageSettings = isOwner || isAdmin;
   const canAddMembers = isOwner || isAdmin;
+  const activeTab = requestedTab === "invitations" && !canAddMembers ? "members" : requestedTab;
 
   const handleOpenRoleDialog = (member: GroupMember) => {
     setSelectedMemberForRole(member);
@@ -664,10 +676,17 @@ export function GroupDetailsPage() {
           <ExpenseDetailsDialog
             groupId={group.id}
             currency={group.currency}
-            expenseId={selectedExpenseForDetails?.id ?? null}
+            expenseId={linkedExpenseId ?? selectedExpenseForDetails?.id ?? null}
             members={members}
-            open={detailsDialogOpen}
-            onOpenChange={setDetailsDialogOpen}
+            open={detailsDialogOpen || Boolean(linkedExpenseId)}
+            onOpenChange={(open) => {
+              setDetailsDialogOpen(open);
+              if (!open && linkedExpenseId) {
+                const next = new URLSearchParams(searchParams);
+                next.delete("expenseId");
+                setSearchParams(next, { replace: true });
+              }
+            }}
             isArchived={isArchived}
             onEditExpense={(exp) => {
               setSelectedExpenseForEdit(exp);

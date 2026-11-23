@@ -174,6 +174,17 @@ function parseAmount(value: string, currency: string): Money {
   }
 }
 
+async function notifySettlementParticipants(
+  tx: Prisma.TransactionClient,
+  settlement: { id: string; fromUserId: string; toUserId: string },
+  actorUserId: string,
+) {
+  const recipients = [settlement.fromUserId, settlement.toUserId].filter((id) => id !== actorUserId);
+  await tx.notification.createMany({
+    data: recipients.map((recipientId) => ({ recipientId, settlementId: settlement.id })),
+  });
+}
+
 export async function createSettlement(
   groupId: string,
   actorUserId: string,
@@ -229,6 +240,7 @@ export async function createSettlement(
       input.fromUserId,
       input.toUserId,
     ]);
+    await notifySettlementParticipants(tx, settlement, actorUserId);
     await completeIdempotency(
       tx,
       actorUserId,
@@ -285,6 +297,7 @@ export async function reverseSettlement(
       );
     }
 
+    await lockBalanceRows(tx, groupId, [original.fromUserId, original.toUserId]);
     const existingReversal = await tx.settlement.findUnique({
       where: { reversesId: settlementId },
       select: { id: true },
@@ -296,7 +309,6 @@ export async function reverseSettlement(
       );
     }
 
-    await lockBalanceRows(tx, groupId, [original.fromUserId, original.toUserId]);
     const reversal = await tx.settlement.create({
       data: {
         groupId,
@@ -313,19 +325,7 @@ export async function reverseSettlement(
       original.fromUserId,
       original.toUserId,
     ]);
+    await notifySettlementParticipants(tx, reversal, actorUserId);
     return settlementResponse(reversal, group.currency);
-  }).catch((error: unknown) => {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
-      throw new SettlementServiceError(
-        "This settlement has already been reversed",
-        "ALREADY_REVERSED",
-      );
-    }
-    throw error;
   });
 }

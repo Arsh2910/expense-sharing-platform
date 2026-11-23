@@ -229,6 +229,8 @@ model ExpenseRevision {
   expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Restrict)
   createdBy User    @relation("ExpenseRevisionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
+  notifications Notification[]
+
   @@unique([expenseId, revision])
   @@index([createdById])
   @@map("expense_revisions")
@@ -266,6 +268,7 @@ model Settlement {
   createdBy  User        @relation("SettlementCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   reverses   Settlement? @relation("SettlementReversal", fields: [reversesId], references: [id], onDelete: Restrict)
   reversedBy Settlement? @relation("SettlementReversal")
+  notifications Notification[]
 
   @@index([groupId, fromUserId])
   @@index([groupId, toUserId])
@@ -333,13 +336,21 @@ model EmailOutbox {
 model Notification {
   id           String    @id @default(uuid()) @db.Uuid
   recipientId  String    @map("recipient_id") @db.Uuid
-  invitationId String    @unique @map("invitation_id") @db.Uuid
+  invitationId String?   @unique @map("invitation_id") @db.Uuid
+  settlementId String?   @map("settlement_id") @db.Uuid
+  expenseRevisionId String? @map("expense_revision_id") @db.Uuid
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   readAt       DateTime? @map("read_at") @db.Timestamptz(6)
 
   recipient  User            @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  invitation GroupInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitation GroupInvitation? @relation(fields: [invitationId], references: [id], onDelete: Cascade)
 
+  settlement Settlement? @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  expenseRevision ExpenseRevision? @relation(fields: [expenseRevisionId], references: [id], onDelete: Cascade)
+
+  @@unique([settlementId, recipientId])
+  @@unique([expenseRevisionId, recipientId])
   @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([recipientId, readAt])
   @@map("notifications")

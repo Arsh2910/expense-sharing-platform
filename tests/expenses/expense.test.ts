@@ -48,6 +48,58 @@ describe("Expense APIs", () => {
     await prisma.$disconnect();
   });
 
+  it("notifies affected participants once per committed expense revision", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const newMember = await createTestUser();
+    await request(app).post(`/api/groups/${groupId}/members`).set("Authorization", owner.authHeader)
+      .send({ email: newMember.user.email }).expect(201);
+
+    const path = `/api/groups/${groupId}/expenses`;
+    const key = crypto.randomUUID();
+    const auth = owner.authHeader;
+    const body = {
+      description: "Dinner",
+      expenseDate: today(),
+      payers: [{ userId: owner.user.id, amount: "10.00" }],
+      split: { type: "EQUAL", participants: [owner.user.id, member.user.id] },
+    };
+    const create = () => request(app).post(path).set("Authorization", auth).set("Idempotency-Key", key).send(body);
+    const creates = await Promise.all([create(), create()]);
+    expect(creates.some((response) => response.status === 201)).toBe(true);
+    expect(creates.every((response) => [201, 409].includes(response.status))).toBe(true);
+    const expenseId = (await create().expect(201)).body.data.id;
+    expect(await prisma.expense.count({ where: { groupId } })).toBe(1);
+    const expensePath = `${path}/${expenseId}`;
+
+    const edit = () => request(app).patch(expensePath).set("Authorization", auth).send({
+      ...body, version: 1, description: "Updated dinner",
+      split: { type: "EQUAL", participants: [owner.user.id, newMember.user.id] },
+    });
+    const edits = await Promise.all([edit(), edit()]);
+    expect(edits.map(({ status }) => status).sort()).toEqual([200, 409]);
+
+    const remove = () => request(app).delete(expensePath).set("Authorization", auth).send({ version: 2 });
+    const deletes = await Promise.all([remove(), remove()]);
+    expect(deletes.map(({ status }) => status).sort()).toEqual([200, 404]);
+
+    const inbox = async (authHeader: string) => {
+      const result = await request(app).get("/api/notifications").set("Authorization", authHeader).expect(200);
+      return result.body.data.items;
+    };
+
+    expect(await inbox(member.authHeader)).toEqual([
+      expect.objectContaining({ type: "EXPENSE_UPDATED", expenseId, groupId, expenseDescription: "Updated dinner" }),
+      expect.objectContaining({ type: "EXPENSE_CREATED", expenseId, expenseDescription: "Dinner", expenseDeleted: true }),
+    ]);
+    expect(await inbox(newMember.authHeader)).toEqual([
+      expect.objectContaining({ type: "EXPENSE_DELETED", expenseId, expenseDeleted: true }),
+      expect.objectContaining({ type: "EXPENSE_UPDATED", expenseId }),
+    ]);
+    expect(await inbox(auth)).toEqual([]);
+    const balances = await prisma.groupBalance.findMany({ where: { groupId } });
+    expect(balances.every((balance) => balance.amount === 0n)).toBe(true);
+  });
+
   it("creates an equal expense with balanced rows and an initial revision", async () => {
     const { owner, member, groupId } = await createGroupWithMember();
 

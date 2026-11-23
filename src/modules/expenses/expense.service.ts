@@ -362,6 +362,19 @@ async function latestVersionOrNotFound(
   );
 }
 
+async function notifyExpenseParticipants(
+  tx: Prisma.TransactionClient,
+  expenseRevisionId: string,
+  actorUserId: string,
+  affectedUserIds: readonly string[],
+) {
+  const recipients = affectedUserIds.filter((id) => id !== actorUserId);
+  if (recipients.length === 0) return;
+  await tx.notification.createMany({
+    data: recipients.map((recipientId) => ({ recipientId, expenseRevisionId })),
+  });
+}
+
 export async function createExpense(
   groupId: string,
   actorUserId: string,
@@ -417,7 +430,7 @@ export async function createExpense(
         include: allocationInclude,
       });
 
-      await tx.expenseRevision.create({
+      const revision = await tx.expenseRevision.create({
         data: {
           expenseId: expense.id,
           revision: 1,
@@ -427,6 +440,7 @@ export async function createExpense(
         },
       });
       await recomputeLockedBalances(tx, groupId, prepared.allocationUserIds);
+      await notifyExpenseParticipants(tx, revision.id, actorUserId, prepared.allocationUserIds);
       await completeIdempotency(
         tx,
         actorUserId,
@@ -542,6 +556,10 @@ export async function updateExpense(
         throw new ExpenseServiceError("Expense not found", "EXPENSE_NOT_FOUND");
       }
 
+      if (current.version !== input.version) {
+        return latestVersionOrNotFound(tx, groupId, expenseId);
+      }
+
       const prepared = prepareAllocations(input, group.currency);
       const historicalUserIds = new Set([
         ...current.payers.map((payer) => payer.userId),
@@ -603,7 +621,7 @@ export async function updateExpense(
         where: { id: expenseId },
         include: allocationInclude,
       });
-      await tx.expenseRevision.create({
+      const revision = await tx.expenseRevision.create({
         data: {
           expenseId,
           revision: updated.version,
@@ -617,6 +635,7 @@ export async function updateExpense(
         },
       });
       await recomputeLockedBalances(tx, groupId, affectedUserIds);
+      await notifyExpenseParticipants(tx, revision.id, actorUserId, affectedUserIds);
 
       return expenseResponse(updated, group.currency);
     });
@@ -640,6 +659,10 @@ export async function deleteExpense(
     if (!current) {
       throw new ExpenseServiceError("Expense not found", "EXPENSE_NOT_FOUND");
     }
+    if (current.version !== expectedVersion) {
+      return latestVersionOrNotFound(tx, groupId, expenseId);
+    }
+
     const affectedUserIds = [
       ...new Set([
         ...current.payers.map((payer) => payer.userId),
@@ -670,7 +693,7 @@ export async function deleteExpense(
       where: { id: expenseId },
       include: allocationInclude,
     });
-    await tx.expenseRevision.create({
+    const revision = await tx.expenseRevision.create({
       data: {
         expenseId,
         revision: tombstone.version,
@@ -684,6 +707,7 @@ export async function deleteExpense(
       },
     });
     await recomputeLockedBalances(tx, groupId, affectedUserIds);
+    await notifyExpenseParticipants(tx, revision.id, actorUserId, affectedUserIds);
 
     return {
       id: expenseId,
