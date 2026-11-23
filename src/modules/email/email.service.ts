@@ -60,13 +60,13 @@ function escapeHtml(value: string) {
   })[character]!);
 }
 
-export async function sendInvitationEmail(input: InvitationEmail) {
+export async function sendInvitationEmail(input: InvitationEmail, idempotencyKey: string) {
   const { error } = await getResend().emails.send({
     from: getFromAddress(),
     to: [input.recipient],
     subject: `Invitation to join ${input.groupName}`,
     html: invitationHtml(input),
-  });
+  }, { idempotencyKey });
   if (error) throw new EmailDeliveryError(error.message);
 }
 

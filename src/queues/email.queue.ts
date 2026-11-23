@@ -2,22 +2,40 @@ import { Queue } from "bullmq";
 
 export const emailQueueName = "email-outbox";
 
-function redisConnection() {
+export function redisConnection() {
   const url = process.env.REDIS_URL;
   if (!url) throw new Error("REDIS_URL is not configured");
   return { url };
 }
 
 export async function enqueueEmailOutbox(outboxId: string) {
-  const queue = new Queue(emailQueueName, { connection: redisConnection() });
+  await enqueueEmailOutboxBatch([outboxId]);
+}
+
+export async function enqueueEmailOutboxBatch(outboxIds: string[]) {
+  if (outboxIds.length === 0) return;
+
+  const queue = new Queue(emailQueueName, {
+    connection: {
+      ...redisConnection(),
+      enableOfflineQueue: false,
+      connectTimeout: 2_000,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null,
+    },
+  });
+  queue.on("error", () => { /* Readiness and enqueue errors propagate to the caller. */ });
   try {
-    await queue.add("deliver-email", { outboxId }, {
-      jobId: `email-outbox:${outboxId}`,
-      attempts: 5,
-      backoff: { type: "exponential", delay: 5_000 },
-      removeOnComplete: true,
-      removeOnFail: { age: 7 * 24 * 60 * 60 },
-    });
+    await queue.waitUntilReady();
+    await queue.addBulk(outboxIds.map((outboxId) => ({
+      name: "deliver-email",
+      data: { outboxId },
+      opts: {
+        jobId: `email-outbox-${outboxId}`,
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    })));
   } finally {
     await queue.close();
   }
