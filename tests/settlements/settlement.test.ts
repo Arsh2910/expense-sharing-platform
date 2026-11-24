@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -17,10 +17,7 @@ async function createGroupWithMember() {
     .set("Authorization", owner.authHeader)
     .send({ name: `Settlement test ${crypto.randomUUID()}`, currency: "USD" });
   const groupId = group.body.data.id as string;
-  await request(app)
-    .post(`/api/groups/${groupId}/members`)
-    .set("Authorization", owner.authHeader)
-    .send({ email: member.user.email });
+  await joinTestGroup(app, groupId, owner, member);
   return { owner, member, groupId };
 }
 
@@ -262,7 +259,7 @@ describe("Settlement APIs", () => {
     const replay = await submit().expect(201);
     expect(await prisma.settlement.count({ where: { groupId } })).toBe(1);
     const inbox = await request(app).get("/api/notifications").set("Authorization", member.authHeader).expect(200);
-    expect(inbox.body.data.items).toEqual([expect.objectContaining({
+    expect(inbox.body.data.items.filter((item: { type: string }) => item.type.startsWith("SETTLEMENT_"))).toEqual([expect.objectContaining({
       type: "SETTLEMENT_RECORDED", groupId, settlementId: replay.body.data.id,
     })]);
     expect(await prisma.notification.count({ where: { recipientId: owner.user.id } })).toBe(0);
@@ -286,7 +283,7 @@ describe("Settlement APIs", () => {
     expect(results.find(({ status }) => status === 409)?.body.code).toBe("ALREADY_REVERSED");
     const reversal = results.find(({ status }) => status === 201)?.body.data;
     const inbox = await request(app).get("/api/notifications").set("Authorization", member.authHeader).expect(200);
-    expect(inbox.body.data.items).toEqual([
+    expect(inbox.body.data.items.filter((item: { type: string }) => item.type.startsWith("SETTLEMENT_"))).toEqual([
       expect.objectContaining({ type: "SETTLEMENT_REVERSED", groupId, settlementId: reversal.id }),
       expect.objectContaining({ type: "SETTLEMENT_RECORDED", groupId, settlementId: created.body.data.id }),
     ]);

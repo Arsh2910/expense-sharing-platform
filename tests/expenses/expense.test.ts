@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 async function createGroupWithMember(currency = "USD") {
   const owner = await createTestUser();
@@ -14,10 +14,7 @@ async function createGroupWithMember(currency = "USD") {
     .send({ name: `Expense test ${crypto.randomUUID()}`, currency });
   const groupId = groupResponse.body.data.id as string;
 
-  await request(app)
-    .post(`/api/groups/${groupId}/members`)
-    .set("Authorization", owner.authHeader)
-    .send({ email: member.user.email });
+  await joinTestGroup(app, groupId, owner, member);
 
   return { owner, member, groupId };
 }
@@ -51,8 +48,7 @@ describe("Expense APIs", () => {
   it("notifies affected participants once per committed expense revision", async () => {
     const { owner, member, groupId } = await createGroupWithMember();
     const newMember = await createTestUser();
-    await request(app).post(`/api/groups/${groupId}/members`).set("Authorization", owner.authHeader)
-      .send({ email: newMember.user.email }).expect(201);
+    await joinTestGroup(app, groupId, owner, newMember);
 
     const path = `/api/groups/${groupId}/expenses`;
     const key = crypto.randomUUID();
@@ -84,7 +80,7 @@ describe("Expense APIs", () => {
 
     const inbox = async (authHeader: string) => {
       const result = await request(app).get("/api/notifications").set("Authorization", authHeader).expect(200);
-      return result.body.data.items;
+      return result.body.data.items.filter((item: { expenseId?: string }) => item.expenseId === expenseId);
     };
 
     expect(await inbox(member.authHeader)).toEqual([

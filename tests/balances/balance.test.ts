@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
 import { rebuildGroupBalances } from "../../src/modules/balances/balance.service.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -19,10 +19,7 @@ async function createGroupWithMember() {
     .send({ name: `Balance test ${crypto.randomUUID()}`, currency: "USD" });
   const groupId = group.body.data.id as string;
 
-  await request(app)
-    .post(`/api/groups/${groupId}/members`)
-    .set("Authorization", owner.authHeader)
-    .send({ email: member.user.email });
+  await joinTestGroup(app, groupId, owner, member);
 
   return { owner, member, groupId };
 }

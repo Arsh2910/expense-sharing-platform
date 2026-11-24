@@ -36,16 +36,20 @@ export function GroupInvitations({ groupId, archived }: { groupId: string; archi
       <CardHeader><CardTitle>Group invitations</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         {!archived && (
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => {
+          <form className="space-y-2" onSubmit={(event) => {
             event.preventDefault();
             create.mutate(target.trim());
           }}>
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="invite-target">Username or email address</Label>
-              <Input id="invite-target" value={target} required maxLength={255}
-                onChange={(event) => setTarget(event.target.value)} />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="invite-target">Username or email address</Label>
+                <Input id="invite-target" value={target} required maxLength={255}
+                  aria-describedby="invite-acceptance"
+                  onChange={(event) => setTarget(event.target.value)} />
+              </div>
+              <Button type="submit" isLoading={create.isPending} disabled={!target.trim()}>Send invitation</Button>
             </div>
-            <Button type="submit" isLoading={create.isPending} disabled={!target.trim()}>Send invitation</Button>
+            <p id="invite-acceptance" className="text-sm text-[#52525B]">They’ll join the group once they accept.</p>
           </form>
         )}
         {create.isError && <Alert variant="error">{getErrorMessage(create.error)}</Alert>}

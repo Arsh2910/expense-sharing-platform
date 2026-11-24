@@ -6,7 +6,6 @@ import { getGroupBalancesController } from "../balances/balance.controller.js";
 import expenseRoutes from "../expenses/expense.routes.js";
 import settlementRoutes from "../settlements/settlement.routes.js";
 import {
-  addGroupMemberController,
   archiveGroupController,
   createGroupController,
   getGroupDetailsController,
@@ -29,7 +28,6 @@ router.use("/:groupId/settlements", settlementRoutes);
 router.get("/:groupId", authenticate, getGroupDetailsController);
 router.patch("/:groupId", authenticate, updateGroupController);
 router.delete("/:groupId", authenticate, archiveGroupController);
-router.post("/:groupId/members", authenticate, addGroupMemberController);
 router.post("/:groupId/invitations", authenticate, createInvitationController);
 router.get("/:groupId/invitations", authenticate, listGroupInvitationsController);
 router.post("/:groupId/invitations/:invitationId/resend", authenticate, requestLimits.resendInvitation, resendInvitationController);

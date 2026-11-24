@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { groupsApi } from "@/features/groups/groups.api";
 import type {
-  AddGroupMemberPayload,
   CreateGroupPayload,
   UpdateGroupPayload,
   UpdateMemberRolePayload,
@@ -69,23 +68,6 @@ export function useArchiveGroupMutation(groupId: string) {
     mutationFn: () => groupsApi.archiveGroup(groupId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupsKeys.all });
-    },
-  });
-}
-
-export function useAddGroupMemberMutation(groupId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: AddGroupMemberPayload) =>
-      groupsApi.addGroupMember(groupId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: groupsKeys.members(groupId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: groupsKeys.details(groupId),
-      });
     },
   });
 }

@@ -50,7 +50,6 @@ import { ExpenseList } from "@/features/expenses/components/expense-list";
 import type { ExpenseItem } from "@/features/expenses/expenses.types";
 import { RecordSettlementDialog } from "@/features/settlements/components/record-settlement-dialog";
 import { SettlementsView } from "@/features/settlements/components/settlements-view";
-import { AddMemberDialog } from "@/features/groups/add-member-dialog";
 import { EditGroupDialog } from "@/features/groups/edit-group-dialog";
 import { EditMemberRoleDialog } from "@/features/groups/edit-member-role-dialog";
 import {
@@ -98,7 +97,6 @@ export function GroupDetailsPage() {
       return next;
     }, { replace: true });
   }
-  const [addMemberOpen, setAddMemberOpen] = React.useState(false);
   const [addExpenseOpen, setAddExpenseOpen] = React.useState(false);
   const [selectedExpenseForDetails, setSelectedExpenseForDetails] =
     React.useState<ExpenseItem | null>(null);
@@ -227,8 +225,8 @@ export function GroupDetailsPage() {
   const isOwner = myRole === "OWNER";
   const isAdmin = myRole === "ADMIN";
   const canManageSettings = isOwner || isAdmin;
-  const canAddMembers = isOwner || isAdmin;
-  const activeTab = requestedTab === "invitations" && !canAddMembers ? "members" : requestedTab;
+  const canManageInvitations = isOwner || isAdmin;
+  const activeTab = requestedTab === "invitations" && !canManageInvitations ? "members" : requestedTab;
 
   const handleOpenRoleDialog = (member: GroupMember) => {
     setSelectedMemberForRole(member);
@@ -336,10 +334,10 @@ export function GroupDetailsPage() {
               </Button>
             )}
 
-            {canAddMembers && (
-              <Button size="sm" onClick={() => setAddMemberOpen(true)}>
+            {canManageInvitations && !isArchived && activeTab !== "invitations" && (
+              <Button size="sm" onClick={() => setActiveTab("invitations")}>
                 <UserPlus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-                Add member
+                Invite member
               </Button>
             )}
 
@@ -404,7 +402,7 @@ export function GroupDetailsPage() {
           aria-label="Group sections"
           className="-mb-px flex gap-1 overflow-x-auto"
         >
-          {TABS.filter((tab) => tab.id !== "invitations" || canAddMembers).map((tab) => {
+          {TABS.filter((tab) => tab.id !== "invitations" || canManageInvitations).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -444,14 +442,14 @@ export function GroupDetailsPage() {
                   {group?.name ?? "this group"}.
                 </CardDescription>
               </div>
-              {canAddMembers && (
+              {canManageInvitations && !isArchived && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setAddMemberOpen(true)}
+                  onClick={() => setActiveTab("invitations")}
                 >
                   <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
-                  Add member
+                  Invite member
                 </Button>
               )}
             </CardHeader>
@@ -581,7 +579,7 @@ export function GroupDetailsPage() {
         </div>
       )}
 
-      {activeTab === "invitations" && canAddMembers && group && (
+      {activeTab === "invitations" && canManageInvitations && group && (
         <GroupInvitations groupId={group.id} archived={isArchived} />
       )}
 
@@ -685,13 +683,6 @@ export function GroupDetailsPage() {
               setSelectedExpenseForEdit(exp);
               setAddExpenseOpen(true);
             }}
-          />
-
-          <AddMemberDialog
-            groupId={group.id}
-            groupName={group.name}
-            open={addMemberOpen}
-            onOpenChange={setAddMemberOpen}
           />
 
           <EditGroupDialog

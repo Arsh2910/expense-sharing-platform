@@ -33,7 +33,10 @@ async function reconcileAndMaintain() {
 }
 function reconcile() {
   reconciliation ??= reconcileAndMaintain()
-    .catch(() => console.error("Email outbox reconciliation failed"))
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Email outbox reconciliation failed: ${message}`);
+    })
     .finally(() => { reconciliation = undefined; });
 }
 

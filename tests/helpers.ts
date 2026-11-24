@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import type { Express } from "express";
+import request from "supertest";
 import { prisma } from "../src/lib/prisma.js";
 import { generateAccessToken, hashToken } from "../src/modules/auth/token.service.js";
 
@@ -43,4 +45,22 @@ export async function createTestUser(
     token,
     authHeader: `Bearer ${token}`,
   };
+}
+
+export async function joinTestGroup(
+  app: Express,
+  groupId: string,
+  inviter: { authHeader: string },
+  invitee: { authHeader: string; user: { email: string } },
+) {
+  const invitation = await request(app)
+    .post(`/api/groups/${groupId}/invitations`)
+    .set("Authorization", inviter.authHeader)
+    .send({ email: invitee.user.email })
+    .expect(201);
+
+  return request(app)
+    .post(`/api/invitations/${invitation.body.data.id}/accept`)
+    .set("Authorization", invitee.authHeader)
+    .expect(200);
 }

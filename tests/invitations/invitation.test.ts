@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
 import { decryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 describe("Invitation APIs", () => {
   afterAll(async () => { await prisma.$disconnect(); });
@@ -35,9 +35,35 @@ describe("Invitation APIs", () => {
     expect(outbox?.status).toBe("PENDING"); expect(outbox?.payload).toMatchObject({ invitationId: created.body.data.id });
   });
 
+  it("requires acceptance when an existing account is invited by email", async () => {
+    const owner = await createTestUser();
+    const target = await createTestUser();
+    const groupId = await createGroup(owner);
+    const groupPath = `/api/groups/${groupId}`;
+    const input = { email: target.user.email };
+
+    await request(app).post(`${groupPath}/members`)
+      .set("Authorization", owner.authHeader).send(input).expect(404);
+
+    const invite = await request(app).post(`${groupPath}/invitations`)
+      .set("Authorization", owner.authHeader).send(input).expect(201);
+    expect(invite.body.data).toMatchObject({ status: "PENDING", invitedUserId: target.user.id });
+    await request(app).get(`${groupPath}/members`)
+      .set("Authorization", target.authHeader).expect(403);
+    expect(await prisma.groupMembership.count({ where: { groupId, userId: target.user.id } })).toBe(0);
+
+    await request(app).post(`/api/invitations/${invite.body.data.id}/accept`)
+      .set("Authorization", target.authHeader).expect(200);
+    const members = await request(app).get(`${groupPath}/members`)
+      .set("Authorization", target.authHeader).expect(200);
+    expect(members.body.data).toContainEqual(expect.objectContaining({
+      role: "MEMBER", user: expect.objectContaining({ id: target.user.id }),
+    }));
+  });
+
   it("rejects duplicate invitations and invitations from regular members", async () => {
     const owner = await createTestUser(); const member = await createTestUser(); const target = await createTestUser(); const groupId = await createGroup(owner);
-    await request(app).post(`/api/groups/${groupId}/members`).set("Authorization", owner.authHeader).send({ email: member.user.email });
+    await joinTestGroup(app, groupId, owner, member);
     const forbidden = await request(app).post(`/api/groups/${groupId}/invitations`).set("Authorization", member.authHeader).send({ username: target.user.username });
     expect(forbidden.status).toBe(403);
     const first = await request(app).post(`/api/groups/${groupId}/invitations`).set("Authorization", owner.authHeader).send({ username: target.user.username });

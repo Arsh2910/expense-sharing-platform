@@ -2,7 +2,7 @@ import request from "supertest";
 import { describe, it, expect, afterAll } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 describe("Group Management APIs", () => {
   afterAll(async () => {
@@ -118,10 +118,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Other User Group", currency: "GBP" });
 
       // Add user to g3
-      await request(app)
-        .post(`/api/groups/${g3.body.data.id}/members`)
-        .set("Authorization", otherUser.authHeader)
-        .send({ email: user.user.email });
+      await joinTestGroup(app, g3.body.data.id, otherUser, user);
 
       // User leaves g3
       await request(app)
@@ -158,10 +155,7 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       // Add member
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       // Query as owner
       const ownerRes = await request(app)
@@ -211,10 +205,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Left Member Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       await request(app)
         .delete(`/api/groups/${groupId}/members/${member.user.id}`)
@@ -261,10 +252,7 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       // Add admin user and promote to ADMIN
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: admin.user.email });
+      await joinTestGroup(app, groupId, owner, admin);
 
       await request(app)
         .patch(`/api/groups/${groupId}/members/${admin.user.id}`)
@@ -318,10 +306,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Member Update Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       const res = await request(app)
         .patch(`/api/groups/${groupId}`)
@@ -389,10 +374,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Cannot Archive by Member", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       const res = await request(app)
         .delete(`/api/groups/${groupId}`)
@@ -402,8 +384,8 @@ describe("Group Management APIs", () => {
     });
   });
 
-  describe("POST & GET /api/groups/:groupId/members - Member Management", () => {
-    it("should allow OWNER and ADMIN to add active members", async () => {
+  describe("Invitations and GET /api/groups/:groupId/members", () => {
+    it("should allow owners and admins to invite members who then accept", async () => {
       const owner = await createTestUser();
       const admin = await createTestUser();
       const member = await createTestUser();
@@ -415,13 +397,10 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       // Owner adds admin
-      const addAdminRes = await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: admin.user.email });
+      const addAdminRes = await joinTestGroup(app, groupId, owner, admin);
 
-      expect(addAdminRes.status).toBe(201);
-      expect(addAdminRes.body.data.role).toBe("MEMBER");
+      expect(addAdminRes.status).toBe(200);
+      expect(addAdminRes.body.data.status).toBe("ACCEPTED");
 
       // Promote to ADMIN
       await request(app)
@@ -430,12 +409,9 @@ describe("Group Management APIs", () => {
         .send({ role: "ADMIN" });
 
       // Admin adds member
-      const addMemberRes = await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", admin.authHeader)
-        .send({ email: member.user.email });
+      const addMemberRes = await joinTestGroup(app, groupId, admin, member);
 
-      expect(addMemberRes.status).toBe(201);
+      expect(addMemberRes.status).toBe(200);
 
       // List members
       const listRes = await request(app)
@@ -461,7 +437,7 @@ describe("Group Management APIs", () => {
         .set("Authorization", owner.authHeader);
 
       const res = await request(app)
-        .post(`/api/groups/${groupId}/members`)
+        .post(`/api/groups/${groupId}/invitations`)
         .set("Authorization", owner.authHeader)
         .send({ email: member.user.email });
 
@@ -479,14 +455,14 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       const res = await request(app)
-        .post(`/api/groups/${groupId}/members`)
+        .post(`/api/groups/${groupId}/invitations`)
         .set("Authorization", owner.authHeader)
         .send({ email: inactiveUser.user.email });
 
       expect(res.status).toBe(403);
     });
 
-    it("should reject adding non-existent user with 404 USER_NOT_FOUND", async () => {
+    it("should reject inviting an unknown username with 404 USER_NOT_FOUND", async () => {
       const owner = await createTestUser();
 
       const groupRes = await request(app)
@@ -496,9 +472,9 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       const res = await request(app)
-        .post(`/api/groups/${groupId}/members`)
+        .post(`/api/groups/${groupId}/invitations`)
         .set("Authorization", owner.authHeader)
-        .send({ email: "doesnotexist@example.com" });
+        .send({ username: "missing_invitee" });
 
       expect(res.status).toBe(404);
     });
@@ -513,13 +489,10 @@ describe("Group Management APIs", () => {
         .send({ name: "Duplicate Member Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       const duplicateRes = await request(app)
-        .post(`/api/groups/${groupId}/members`)
+        .post(`/api/groups/${groupId}/invitations`)
         .set("Authorization", owner.authHeader)
         .send({ email: member.user.email });
 
@@ -537,10 +510,7 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       // Add member
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       // Member leaves
       await request(app)
@@ -548,13 +518,10 @@ describe("Group Management APIs", () => {
         .set("Authorization", member.authHeader);
 
       // Re-add member
-      const reAddRes = await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      const reAddRes = await joinTestGroup(app, groupId, owner, member);
 
-      expect(reAddRes.status).toBe(201);
-      expect(reAddRes.body.data.role).toBe("MEMBER");
+      expect(reAddRes.status).toBe(200);
+      expect(reAddRes.body.data.status).toBe("ACCEPTED");
 
       // Verify there are 2 membership records for this user (1 historical with leftAt, 1 active with leftAt null)
       const userMemberships = await prisma.groupMembership.findMany({
@@ -576,10 +543,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Self Leave Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       const leaveRes = await request(app)
         .delete(`/api/groups/${groupId}/members/${member.user.id}`)
@@ -611,10 +575,7 @@ describe("Group Management APIs", () => {
 
       // Add all
       for (const u of [admin1, admin2, member]) {
-        await request(app)
-          .post(`/api/groups/${groupId}/members`)
-          .set("Authorization", owner.authHeader)
-          .send({ email: u.user.email });
+        await joinTestGroup(app, groupId, owner, u);
       }
 
       // Promote admin1 and admin2
@@ -657,10 +618,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Sole Owner Removal Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: admin.user.email });
+      await joinTestGroup(app, groupId, owner, admin);
 
       // Promote to OWNER so 2 owners exist
       await request(app)
@@ -687,16 +645,10 @@ describe("Group Management APIs", () => {
       const groupId = groupRes.body.data.id;
 
       // Add member1 first
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member1.user.email });
+      await joinTestGroup(app, groupId, owner, member1);
 
       // Add member2 second
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member2.user.email });
+      await joinTestGroup(app, groupId, owner, member2);
 
       // Owner leaves
       const leaveRes = await request(app)
@@ -747,10 +699,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Already Left Removal Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       // First removal succeeds
       await request(app)
@@ -792,10 +741,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Archived Group Removal Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       await request(app)
         .delete(`/api/groups/${groupId}`)
@@ -820,10 +766,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Multi Owner Role Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       // Promote to ADMIN
       const promoteAdmin = await request(app)
@@ -887,15 +830,9 @@ describe("Group Management APIs", () => {
         .send({ name: "Non Owner Role Change Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: admin.user.email });
+      await joinTestGroup(app, groupId, owner, admin);
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       await request(app)
         .patch(`/api/groups/${groupId}/members/${admin.user.id}`)
@@ -921,10 +858,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Archived Role Update Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       await request(app)
         .delete(`/api/groups/${groupId}`)
@@ -948,10 +882,7 @@ describe("Group Management APIs", () => {
         .send({ name: "Invalid Role Test", currency: "USD" });
       const groupId = groupRes.body.data.id;
 
-      await request(app)
-        .post(`/api/groups/${groupId}/members`)
-        .set("Authorization", owner.authHeader)
-        .send({ email: member.user.email });
+      await joinTestGroup(app, groupId, owner, member);
 
       const res = await request(app)
         .patch(`/api/groups/${groupId}/members/${member.user.id}`)

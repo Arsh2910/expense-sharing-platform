@@ -5,7 +5,7 @@ import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
 import { recordAuditEvent } from "../../src/modules/audit/audit.service.js";
 import { decryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
-import { createTestUser } from "../helpers.js";
+import { createTestUser, joinTestGroup } from "../helpers.js";
 
 afterAll(() => prisma.$disconnect());
 
@@ -77,8 +77,7 @@ it("records expense creation, the winning edit, and deletion once each", async (
 it("records settlement creation and only the successful reversal", async () => {
   const { owner, path, groupId } = await createGroup();
   const participant = await createTestUser();
-  await request(app).post(`${path}/members`).set("Authorization", owner.authHeader)
-    .send({ email: participant.user.email }).expect(201);
+  await joinTestGroup(app, groupId, owner, participant);
   const settlement = await request(app).post(`${path}/settlements`).set("Authorization", owner.authHeader)
     .send({
       fromUserId: owner.user.id, toUserId: participant.user.id, amount: "5.00",

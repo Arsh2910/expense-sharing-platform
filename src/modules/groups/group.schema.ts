@@ -28,12 +28,6 @@ export const updateGroupSchema = z.object({
 
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
 
-export const addGroupMemberSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email()),
-});
-
-export type AddGroupMemberInput = z.infer<typeof addGroupMemberSchema>;
-
 export const updateMemberRoleSchema = z.object({
   role: z.enum(["OWNER", "ADMIN", "MEMBER"]),
 });

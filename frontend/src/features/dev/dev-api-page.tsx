@@ -171,9 +171,9 @@ const PRESET_ENDPOINTS: PresetEndpoint[] = [
     path: "/api/groups/{{selectedGroupId}}/members",
   },
   {
-    label: "Add Group Member (POST /api/groups/:groupId/members)",
+    label: "Invite Group Member (POST /api/groups/:groupId/invitations)",
     method: "POST",
-    path: "/api/groups/{{selectedGroupId}}/members",
+    path: "/api/groups/{{selectedGroupId}}/invitations",
     defaultBody: {
       email: "friend@example.com",
     },
@@ -986,9 +986,9 @@ export function DevApiTestingPage() {
                     </tr>
                     <tr>
                       <td className="py-2 text-teal-800 font-bold">POST</td>
-                      <td className="py-2">/api/groups/:groupId/members</td>
+                      <td className="py-2">/api/groups/:groupId/invitations</td>
                       <td className="py-2">Yes (OWNER or ADMIN)</td>
-                      <td className="py-2">201 Created</td>
+                      <td className="py-2">201 Created (Pending invitation)</td>
                     </tr>
                     <tr>
                       <td className="py-2 text-red-800 font-bold">DELETE</td>

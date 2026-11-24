@@ -1,6 +1,5 @@
 import type { NextFunction, RequestHandler } from "express";
 import {
-  addGroupMemberSchema,
   createGroupSchema,
   groupMemberParamsSchema,
   groupParamsSchema,
@@ -8,7 +7,6 @@ import {
   updateMemberRoleSchema,
 } from "./group.schema.js";
 import {
-  addGroupMember,
   archiveGroup,
   createGroup,
   getGroupDetails,
@@ -97,9 +95,6 @@ function handleGroupMembershipError(
     GROUP_NOT_FOUND: 404,
     GROUP_ARCHIVED: 409,
     FORBIDDEN: 403,
-    USER_NOT_FOUND: 404,
-    USER_INACTIVE: 403,
-    ALREADY_MEMBER: 409,
     MEMBER_NOT_FOUND: 404,
     MEMBER_ALREADY_LEFT: 409,
     CANNOT_REMOVE_LAST_OWNER: 409,
@@ -233,63 +228,6 @@ export const archiveGroupController: RequestHandler<{
     res.status(200).json({
       message: "Group archived successfully",
       data: group,
-    });
-  } catch (error) {
-    if (error instanceof GroupMembershipError) {
-      handleGroupMembershipError(error, res);
-      return;
-    }
-
-    next(error);
-  }
-};
-
-export const addGroupMemberController: RequestHandler<{
-  groupId: string;
-}> = async (
-  req,
-  res,
-  next: NextFunction,
-) => {
-  try {
-    const actorUserId = req.auth?.userId;
-
-    if (!actorUserId) {
-      res.status(401).json({
-        message: "Authentication required",
-      });
-      return;
-    }
-
-    const params = groupParamsSchema.safeParse(req.params);
-
-    if (!params.success) {
-      res.status(400).json({
-        message: "Validation failed",
-        errors: params.error.issues,
-      });
-      return;
-    }
-
-    const result = addGroupMemberSchema.safeParse(req.body);
-
-    if (!result.success) {
-      res.status(400).json({
-        message: "Validation failed",
-        errors: result.error.issues,
-      });
-      return;
-    }
-
-    const member = await addGroupMember(
-      params.data.groupId,
-      actorUserId,
-      result.data,
-    );
-
-    res.status(201).json({
-      message: "Member added successfully",
-      data: member,
     });
   } catch (error) {
     if (error instanceof GroupMembershipError) {

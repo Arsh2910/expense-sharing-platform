@@ -19,10 +19,6 @@ export interface UpdateGroupPayload {
   name: string;
 }
 
-export interface AddGroupMemberPayload {
-  email: string;
-}
-
 export interface UpdateMemberRolePayload {
   role: GroupRole;
 }
@@ -81,19 +77,6 @@ export const groupsApi = {
       { method: "GET" },
     );
     return res.data;
-  },
-
-  async addGroupMember(
-    groupId: string,
-    payload: AddGroupMemberPayload,
-  ): Promise<ApiSuccessResponse<GroupMember>> {
-    return apiRequest<ApiSuccessResponse<GroupMember>>(
-      `/api/groups/${encodeURIComponent(groupId)}/members`,
-      {
-        method: "POST",
-        body: payload,
-      },
-    );
   },
 
   async removeMember(

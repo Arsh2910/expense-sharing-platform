@@ -1,10 +1,7 @@
 import * as React from "react";
 import {
   Activity,
-  ArrowDownLeft,
   ArrowRight,
-  ArrowUpRight,
-  Clock,
   Plus,
   RefreshCw,
   Scale,
@@ -21,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ComingSoonPanel, EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,43 +27,6 @@ import { useMyGroupsQuery } from "@/features/groups/groups.queries";
 import { RoleBadge } from "@/features/groups/role-badge";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils/format";
-
-interface BalancePreviewCardProps {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  helperText: string;
-}
-
-function BalancePreviewCard({
-  label,
-  icon: Icon,
-  helperText,
-}: BalancePreviewCardProps) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-[#71717A]">{label}</p>
-          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[#E7E5E0] bg-[#FAF9F6] text-[#71717A]">
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-          </div>
-        </div>
-        <div className="mt-3 flex items-baseline justify-between gap-2">
-          <span className="text-2xl font-semibold tracking-tight text-[#A1A1AA] tabular-nums">
-            —
-          </span>
-          <Badge variant="neutral" className="text-[11px]">
-            <Clock className="h-3 w-3 text-[#71717A]" aria-hidden="true" />
-            Group view
-          </Badge>
-        </div>
-        <p className="mt-2 text-xs text-[#71717A] leading-relaxed">
-          {helperText}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -81,7 +41,7 @@ export function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title={`Welcome back, ${firstName}`}
-        description="Review your shared expense groups and account readiness."
+        description="Open your groups, check balances, and review activity."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -89,27 +49,6 @@ export function DashboardPage() {
           </Button>
         }
       />
-
-      {/* Financial Summary Strip — Honest unimplemented placeholders */}
-      <section aria-label="Balance summary">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <BalancePreviewCard
-            label="Total net balance"
-            icon={Scale}
-            helperText="Open a group to view the current net balance."
-          />
-          <BalancePreviewCard
-            label="Others owe you"
-            icon={ArrowDownLeft}
-            helperText="View who owes you inside each group."
-          />
-          <BalancePreviewCard
-            label="You owe others"
-            icon={ArrowUpRight}
-            helperText="View your outstanding shares inside each group."
-          />
-        </div>
-      </section>
 
       {/* Main Overview Grid */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -183,10 +122,10 @@ export function DashboardPage() {
                   {recentGroups.map((group) => {
                     const membership = group.memberships[0];
                     return (
-                      <li key={group.id}>
+                      <li key={group.id} className="flex flex-wrap items-center gap-x-2 py-1">
                         <Link
                           to={`/groups/${group.id}`}
-                          className="group flex items-center justify-between gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-[#FAF9F6]"
+                          className="group flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-[#FAF9F6]"
                         >
                           <div className="min-w-0 space-y-1">
                             <p className="text-sm font-medium text-[#18181B] group-hover:text-[#0F766E] transition-colors truncate">
@@ -209,6 +148,12 @@ export function DashboardPage() {
                             />
                           </div>
                         </Link>
+                        <Button asChild size="sm" variant="ghost" className="shrink-0">
+                          <Link to={`/groups/${group.id}?tab=balances`} aria-label={`View balances for ${group.name}`}>
+                            <Scale className="h-3.5 w-3.5" aria-hidden="true" />
+                            Balances
+                          </Link>
+                        </Button>
                       </li>
                     );
                   })}
@@ -218,17 +163,35 @@ export function DashboardPage() {
           </Card>
         </section>
 
-        {/* Recent Activity */}
-        <section aria-label="Recent activity" className="lg:col-span-5">
-          <ComingSoonPanel
-            icon={Activity}
-            title="Recent activity"
-            description="Open a group to view its live chronological feed of expenses, edits, settlements, and membership changes."
-            detail="Activity history is available from each group’s details page."
-            statusLabel="Available in groups"
-            className="h-full"
-          />
-        </section>
+        {recentGroups.length > 0 && (
+          <section aria-label="Group activity" className="lg:col-span-5">
+            <Card className="h-full">
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
+                <CardTitle>Group activity</CardTitle>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/activity">View all groups</Link>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-[#F4F3EF]">
+                  {recentGroups.map((group) => (
+                    <li key={group.id}>
+                      <Link
+                        to={`/groups/${group.id}?tab=activity`}
+                        aria-label={`View activity for ${group.name}`}
+                        className="group flex items-center gap-3 rounded-lg px-2 py-3 text-sm font-medium transition-colors hover:bg-[#FAF9F6] hover:text-[#0F766E]"
+                      >
+                        <Activity className="h-4 w-4 shrink-0 text-[#0F766E]" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate">{group.name}</span>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-[#A1A1AA] group-hover:text-[#0F766E]" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+        )}
       </div>
 
       <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} />

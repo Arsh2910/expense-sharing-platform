@@ -1,6 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 
 export interface EmptyStateProps {
@@ -33,56 +31,6 @@ export function EmptyState({
         {description}
       </p>
       {action && <div className="mt-5">{action}</div>}
-    </div>
-  );
-}
-
-export interface ComingSoonPanelProps {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  detail?: string;
-  statusLabel?: string;
-  className?: string;
-}
-
-export function ComingSoonPanel({
-  icon: Icon,
-  title,
-  description,
-  detail,
-  statusLabel = "Coming soon",
-  className,
-}: ComingSoonPanelProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border border-[#E7E5E0] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]",
-        className,
-      )}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] text-[#52525B]">
-            <Icon className="h-4.5 w-4.5" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-[#18181B]">{title}</h3>
-              <Badge variant="neutral">
-                <Clock className="h-3 w-3 text-[#71717A]" aria-hidden="true" />
-                {statusLabel}
-              </Badge>
-            </div>
-            <p className="text-sm text-[#52525B] leading-relaxed">
-              {description}
-            </p>
-            {detail && (
-              <p className="pt-0.5 text-xs text-[#71717A]">{detail}</p>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

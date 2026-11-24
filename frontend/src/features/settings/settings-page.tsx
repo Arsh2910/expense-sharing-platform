@@ -31,7 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ComingSoonPanel } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -529,11 +528,10 @@ export function AccountSettingsPage() {
               <CardTitle>Session management</CardTitle>
             </div>
             <CardDescription>
-              Your authentication state uses secure HttpOnly cookies with
-              automatic token rotation.
+              To sign out of your other sessions, change your password above.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="flex flex-col gap-4 rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -543,8 +541,7 @@ export function AccountSettingsPage() {
                   <Badge variant="accent">Active</Badge>
                 </div>
                 <p className="text-xs text-[#52525B]">
-                  Signed in as {user.email}. Signing out revokes this session on
-                  the server and clears authentication cookies.
+                  Signed in as {user.email}
                 </p>
               </div>
               <Button
@@ -558,13 +555,6 @@ export function AccountSettingsPage() {
                 Sign out
               </Button>
             </div>
-
-            <ComingSoonPanel
-              icon={Monitor}
-              title="All active devices & remote revocation"
-              description="Viewing a list of all signed-in devices, IP metadata, and revoking individual sessions remotely will be supported once the session listing endpoint is added."
-              detail="Tip: Updating your password above immediately revokes all other active sessions."
-            />
           </CardContent>
         </Card>
 
