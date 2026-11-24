@@ -1,8 +1,14 @@
 import { Worker } from "bullmq";
-import { prisma } from "../lib/prisma.js";
-import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../modules/email/email-outbox.service.js";
-import { expireInvitations } from "../modules/invitations/invitation.service.js";
+import "dotenv/config";
+import { validateEnvironment } from "../config/environment.js";
+
 import { emailQueueName, redisConnection } from "../queues/email.queue.js";
+
+validateEnvironment("email-worker");
+const { prisma } = await import("../lib/prisma.js");
+const { deliverEmailOutbox, protectLegacyEmailTokens, pruneCompletedEmails, reconcileEmailOutbox } =
+  await import("../modules/email/email-outbox.service.js");
+const { expireInvitations } = await import("../modules/invitations/invitation.service.js");
 
 const worker = new Worker<{ outboxId: string }>(
   emailQueueName,
@@ -10,8 +16,8 @@ const worker = new Worker<{ outboxId: string }>(
   { connection: redisConnection(), concurrency: 5 },
 );
 worker.on("completed", (job) => console.log(`Email job completed: ${job.id}`));
-worker.on("failed", (job, error) => console.error(`Email job failed: ${job?.id}`, error));
-worker.on("error", (error) => console.error("Email worker error", error));
+worker.on("failed", (job) => console.error(`Email job failed: ${job?.id}`));
+worker.on("error", () => console.error("Email worker error"));
 
 let reconciliation: Promise<void> | undefined;
 let nextCleanupAt = 0;
@@ -19,6 +25,7 @@ let nextCleanupAt = 0;
 async function reconcileAndMaintain() {
   await expireInvitations();
   await reconcileEmailOutbox();
+  await protectLegacyEmailTokens();
   if (Date.now() >= nextCleanupAt) {
     await pruneCompletedEmails();
     nextCleanupAt = Date.now() + 60 * 60_000;
@@ -26,7 +33,7 @@ async function reconcileAndMaintain() {
 }
 function reconcile() {
   reconciliation ??= reconcileAndMaintain()
-    .catch((error) => console.error("Email outbox reconciliation failed", error))
+    .catch(() => console.error("Email outbox reconciliation failed"))
     .finally(() => { reconciliation = undefined; });
 }
 

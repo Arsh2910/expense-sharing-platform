@@ -28,39 +28,29 @@ import {
 } from "./auth.service.js";
 import { accessCookieName, refreshCookieName } from "./token.service.js";
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-};
+function authCookie(name: string, value: string, maxAge: number) {
+  const production = process.env.NODE_ENV === "production";
+  // Vercel and Render use different sites in staging, so credentialed
+  // cross-site fetches require SameSite=None. Secure is mandatory with None.
+  const sameSite = production ? "None" : "Lax";
+  const secure = production ? "; Secure" : "";
+  return `${name}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=${sameSite}${secure}`;
+}
+
 function setAuthCookies(
   res: Parameters<RequestHandler>[1],
   accessToken: string,
   refreshToken: string,
 ) {
-  const serialize = (name: string, value: string, maxAge: number) =>
-    `${name}=${value}; Max-Age=${Math.floor(maxAge / 1000)}; Path=/; HttpOnly; SameSite=Lax${cookieOptions.secure ? "; Secure" : ""}`;
-  res.append(
-    "Set-Cookie",
-    serialize(accessCookieName, accessToken, 15 * 60 * 1000),
-  );
-  res.append(
-    "Set-Cookie",
-    serialize(refreshCookieName, refreshToken, 30 * 86400000),
-  );
+  res.append("Set-Cookie", authCookie(accessCookieName, accessToken, 15 * 60));
+  res.append("Set-Cookie", authCookie(refreshCookieName, refreshToken, 30 * 86400));
 }
+
 function clearAuthCookies(res: Parameters<RequestHandler>[1]) {
-  const secure = cookieOptions.secure ? "; Secure" : "";
-  res.append(
-    "Set-Cookie",
-    `${accessCookieName}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure}`,
-  );
-  res.append(
-    "Set-Cookie",
-    `${refreshCookieName}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure}`,
-  );
+  res.append("Set-Cookie", authCookie(accessCookieName, "", 0));
+  res.append("Set-Cookie", authCookie(refreshCookieName, "", 0));
 }
+
 function body(req: Parameters<RequestHandler>[0], name: string) {
   const value: unknown = req.body?.[name];
   return typeof value === "string" ? value : undefined;
@@ -118,9 +108,9 @@ export const login: RequestHandler = async (req, res, next) => {
     res.json({ message: "Login successful", data: data.user });
   } catch (error) {
     if (error instanceof AuthServiceError) {
-      res
-        .status(error.code === "ACCOUNT_UNAVAILABLE" ? 403 : 401)
-        .json({ message: error.message });
+      res.status(401).json({
+        message: error.code === "EMAIL_NOT_VERIFIED" ? error.message : "Invalid email or password",
+      });
       return;
     }
     next(error);
@@ -133,7 +123,7 @@ export const refresh: RequestHandler = async (req, res, next) => {
       ? (parsed.data.refreshToken ?? tokenFrom(req))
       : tokenFrom(req);
     if (!token) {
-      res.status(401).json({ message: "Refresh token required" });
+      res.status(401).json({ message: "Invalid or expired refresh token" });
       return;
     }
     const data = await refreshSession(token, meta(req));
@@ -142,7 +132,7 @@ export const refresh: RequestHandler = async (req, res, next) => {
   } catch (error) {
     if (error instanceof AuthServiceError) {
       clearAuthCookies(res);
-      res.status(401).json({ message: error.message });
+      res.status(401).json({ message: "Invalid or expired refresh token" });
       return;
     }
     next(error);

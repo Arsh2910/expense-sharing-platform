@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
-import { encryptResetToken } from "../email/reset-token-crypto.js";
+import { encryptOutboxToken } from "../email/outbox-token-crypto.js";
 import { prisma } from "../../lib/prisma.js";
 import {
   createRefreshToken,
@@ -20,6 +20,8 @@ const publicUser = {
   createdAt: true,
 } as const;
 const sessionDays = 30;
+// Run the same bcrypt work for an unknown email as for a known account.
+const dummyLoginHash = "$2b$12$FE0HDp0zyxo.QeskACBs0.lbK2g/HUqZ8O0DONiqeYSU1qw3dhyX2";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -55,7 +57,7 @@ function invalidatePasswordResets(tx: Prisma.TransactionClient, userId: string, 
 
 export async function requestPasswordReset(email: string) {
   const token = randomBytes(32).toString("base64url");
-  const encryptedToken = encryptResetToken(token);
+  const encryptedToken = encryptOutboxToken(token);
   await prisma.$transaction(async (tx) => {
     const user = await tx.user.findFirst({
       where: { email, status: "ACTIVE", deletedAt: null, emailVerifiedAt: { not: null } },
@@ -142,7 +144,7 @@ async function queueVerification(
     },
   });
   await tx.emailOutbox.create({
-    data: { type: "EMAIL_VERIFICATION", recipient, payload: { userId, token, purpose } },
+    data: { type: "EMAIL_VERIFICATION", recipient, payload: { userId, encryptedToken: encryptOutboxToken(token), purpose } },
   });
 }
 
@@ -252,13 +254,12 @@ export async function loginUser(
   meta?: { userAgent?: string; ipAddress?: string },
 ) {
   const user = await prisma.user.findFirst({ where: { email: input.email } });
-  if (!user || !(await bcrypt.compare(input.password, user.passwordHash)))
+  const passwordMatches = await bcrypt.compare(input.password, user?.passwordHash ?? dummyLoginHash);
+  if (!user || !passwordMatches || user.status !== "ACTIVE" || user.deletedAt)
     throw new AuthServiceError(
       "Invalid email or password",
       "INVALID_CREDENTIALS",
     );
-  if (user.status !== "ACTIVE" || user.deletedAt)
-    throw new AuthServiceError("Account unavailable", "ACCOUNT_UNAVAILABLE");
   if (!user.emailVerifiedAt)
     throw new AuthServiceError(
       "Email verification required",

@@ -3,6 +3,7 @@ import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { recordAuditEvent } from "../audit/audit.service.js";
 import { enqueueEmailOutbox } from "../../queues/email.queue.js";
+import { encryptOutboxToken } from "../email/outbox-token-crypto.js";
 import { hashToken } from "../auth/token.service.js";
 import type { CreateInvitationInput } from "./invitation.schema.js";
 
@@ -64,7 +65,7 @@ async function createEmailOutbox(tx: Prisma.TransactionClient, invitation: Invit
       recipient,
       payload: {
         invitationId: invitation.id,
-        token,
+        encryptedToken: encryptOutboxToken(token),
         groupName: invitation.group.name,
         expiresAt: invitation.expiresAt.toISOString(),
       },
@@ -78,8 +79,8 @@ async function enqueueAfterCommit(outboxId?: string) {
   if (!outboxId || !process.env.REDIS_URL) return;
   try {
     await enqueueEmailOutbox(outboxId);
-  } catch (error) {
-    console.error("Could not enqueue invitation email", error);
+  } catch {
+    console.error("Could not enqueue invitation email");
   }
 }
 

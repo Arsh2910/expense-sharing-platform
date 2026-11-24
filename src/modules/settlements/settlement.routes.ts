@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requestLimits } from "../../middleware/rate-limit.middleware.js";
 import { authenticate } from "../auth/auth.middleware.js";
 import {
   createSettlementController,
@@ -8,7 +9,7 @@ import {
 
 const router = Router({ mergeParams: true });
 
-router.post("/", authenticate, createSettlementController);
+router.post("/", authenticate, requestLimits.createSettlement, createSettlementController);
 router.get("/", authenticate, listSettlementsController);
 router.post(
   "/:settlementId/reverse",

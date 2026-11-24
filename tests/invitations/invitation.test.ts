@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
+import { decryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
 import { createTestUser } from "../helpers.js";
 
 describe("Invitation APIs", () => {
@@ -69,7 +70,7 @@ describe("Invitation APIs", () => {
     const replacement = await prisma.emailOutbox.findFirstOrThrow({
       where: { recipient: email, type: "GROUP_INVITATION", id: { not: original.id } },
     });
-    const tokenFrom = (emailRow: { payload: unknown }) => (emailRow.payload as { token: string }).token;
+    const tokenFrom = (emailRow: { payload: unknown }) => decryptOutboxToken((emailRow.payload as { encryptedToken: string }).encryptedToken);
     expect(tokenFrom(replacement)).not.toBe(tokenFrom(original));
 
     const invitee = request.agent(app);

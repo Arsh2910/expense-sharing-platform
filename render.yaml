@@ -1,0 +1,79 @@
+services:
+  - type: web
+    name: expense-sharing-api
+    runtime: node
+    region: singapore
+    plan: free
+    # Free Render plans do not provide pre-deploy commands, so the staging
+    # API applies committed migrations during its build. Move this to
+    # preDeployCommand when using a paid plan.
+    buildCommand: npm ci && npx prisma generate && npm run migrate:deploy && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expense-sharing-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: expense-sharing-redis
+          type: keyvalue
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: PASSWORD_RESET_OUTBOX_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+
+  - type: worker
+    name: expense-sharing-email-worker
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npm run start:worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expense-sharing-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: expense-sharing-redis
+          type: keyvalue
+          property: connectionString
+      - key: APP_BASE_URL
+        sync: false
+      - key: PASSWORD_RESET_OUTBOX_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+
+  - type: keyvalue
+    name: expense-sharing-redis
+    region: singapore
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Render services
+
+databases:
+  - name: expense-sharing-db
+    region: singapore
+    plan: free
+    postgresMajorVersion: "17"

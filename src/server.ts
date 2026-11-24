@@ -1,7 +1,8 @@
 import "dotenv/config";
-import app from "./app.js";
+import { validateEnvironment } from "./config/environment.js";
 
-const PORT = Number(process.env.PORT) || 5000;
+const { PORT } = validateEnvironment("api");
+const { default: app } = await import("./app.js");
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

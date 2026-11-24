@@ -3,32 +3,68 @@ import { enqueueEmailOutboxBatch } from "../../queues/email.queue.js";
 import { hashToken } from "../auth/token.service.js";
 import { sendInvitationEmail, sendPasswordResetEmail, sendVerificationEmail } from "./email.service.js";
 
-import { decryptResetToken } from "./reset-token-crypto.js";
+import { decryptOutboxToken, encryptOutboxToken } from "./outbox-token-crypto.js";
 
 const claimDurationMs = 5 * 60_000;
 const maxAttempts = 5;
 
 class PermanentEmailError extends Error {}
 
+function deliveryToken(payload: Record<string, unknown>) {
+  if (typeof payload.encryptedToken === "string") return decryptOutboxToken(payload.encryptedToken);
+  // Rows written before encryption remain deliverable during rollout.
+  if (typeof payload.token === "string") return payload.token;
+  throw new PermanentEmailError("Missing email token");
+}
+
+export async function protectLegacyEmailTokens() {
+  await prisma.$executeRaw`
+    UPDATE email_outbox SET payload = payload - 'token' - 'encryptedToken'
+    WHERE type IN ('GROUP_INVITATION', 'EMAIL_VERIFICATION', 'PASSWORD_RESET')
+      AND status IN ('SENT', 'DEAD') AND (payload ? 'token' OR payload ? 'encryptedToken')
+  `;
+
+  const rows = await prisma.$queryRaw<{ id: string; token: string }[]>`
+    SELECT id, payload->>'token' AS token
+    FROM email_outbox
+    WHERE type IN ('GROUP_INVITATION', 'EMAIL_VERIFICATION')
+      AND jsonb_typeof(payload->'token') = 'string'
+      AND status IN ('PENDING', 'PROCESSING', 'FAILED')
+    ORDER BY available_at, id
+    LIMIT 100
+  `;
+  for (const row of rows) {
+    const encryptedToken = encryptOutboxToken(row.token);
+    await prisma.$executeRaw`
+      UPDATE email_outbox
+      SET payload = (payload - 'token') || jsonb_build_object('encryptedToken', ${encryptedToken}::text)
+      WHERE id = ${row.id}::uuid AND payload ? 'token'
+        AND status IN ('PENDING', 'PROCESSING', 'FAILED')
+    `;
+  }
+}
+
 function parseVerificationPayload(value: unknown): { userId: string; token: string; purpose: "EMAIL" | "EMAIL_CHANGE" } {
   if (typeof value !== "object" || value === null) throw new PermanentEmailError("Invalid verification payload");
-  const { userId, token, purpose } = value as Record<string, unknown>;
-  if (typeof userId !== "string" || typeof token !== "string" || (purpose !== "EMAIL" && purpose !== "EMAIL_CHANGE")) {
+  const payload = value as Record<string, unknown>;
+  const { userId, purpose } = payload;
+  if (typeof userId !== "string" || (purpose !== "EMAIL" && purpose !== "EMAIL_CHANGE")) {
     throw new PermanentEmailError("Invalid verification payload");
   }
-  return { userId, token, purpose };
+  return { userId, token: deliveryToken(payload), purpose };
 }
 
 type InvitationPayload = { invitationId: string; token: string; groupName: string; expiresAt: string };
 
 function parseInvitationPayload(value: unknown): InvitationPayload {
   if (typeof value !== "object" || value === null) throw new PermanentEmailError("Invalid email payload");
-  const { invitationId, token, groupName, expiresAt } = value as Record<string, unknown>;
-  if (typeof invitationId !== "string" || typeof token !== "string" || typeof groupName !== "string"
+  const payload = value as Record<string, unknown>;
+  const { invitationId, groupName, expiresAt } = payload;
+  if (typeof invitationId !== "string" || typeof groupName !== "string"
     || typeof expiresAt !== "string" || !Number.isFinite(Date.parse(expiresAt))) {
     throw new PermanentEmailError("Invalid invitation email payload");
   }
-  return { invitationId, token, groupName, expiresAt };
+  return { invitationId, token: deliveryToken(payload), groupName, expiresAt };
 }
 
 function dueOutbox(now: Date) {
@@ -127,7 +163,7 @@ export async function deliverEmailOutbox(outboxId: string) {
       if (typeof userId !== "string" || typeof encryptedToken !== "string") {
         throw new PermanentEmailError("Invalid password reset email payload");
       }
-      const token = decryptResetToken(encryptedToken);
+      const token = decryptOutboxToken(encryptedToken);
       const reset = await prisma.verificationToken.findFirst({
         where: {
           userId, tokenHash: hashToken(token), purpose: "PASSWORD_RESET",
@@ -142,27 +178,25 @@ export async function deliverEmailOutbox(outboxId: string) {
       throw new PermanentEmailError(`Unsupported email type: ${record.type}`);
     }
   } catch (error) {
-    const message = record.type === "PASSWORD_RESET" && !(error instanceof PermanentEmailError)
-      ? "Password reset email delivery failed"
-      : error instanceof Error ? error.message : "Unknown email delivery error";
+    const message = error instanceof PermanentEmailError ? error.message : "Email delivery failed";
     const terminal = error instanceof PermanentEmailError || record.attempts >= maxAttempts;
     await prisma.emailOutbox.updateMany({
       where: claim,
       data: {
         status: terminal ? "DEAD" : "FAILED",
-        ...(terminal && record.type === "PASSWORD_RESET" ? { payload: {} } : {}),
+        ...(terminal ? { payload: {} } : {}),
         availableAt: new Date(Date.now() + 30_000 * 2 ** Math.min(record.attempts - 1, maxAttempts - 1)),
         lastError: message,
       },
     });
-    throw record.type === "PASSWORD_RESET" ? new Error(message) : error;
+    throw new Error(message);
   }
 
   await prisma.emailOutbox.updateMany({
     where: claim,
     data: {
       status: "SENT", sentAt: new Date(), lastError: null,
-      ...(record.type === "PASSWORD_RESET" ? { payload: {} } : {}),
+      payload: {},
     },
   });
 }

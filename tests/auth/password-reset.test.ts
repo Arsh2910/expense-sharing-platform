@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
 import { hashToken } from "../../src/modules/auth/token.service.js";
-import { decryptResetToken } from "../../src/modules/email/reset-token-crypto.js";
+import { decryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
 import { createTestUser } from "../helpers.js";
 
 beforeEach(() => vi.stubEnv("PASSWORD_RESET_OUTBOX_KEY", randomBytes(32).toString("hex")));
@@ -23,7 +23,7 @@ async function issue(email: string) {
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
   const envelope = (mail.payload as { encryptedToken: string }).encryptedToken;
-  return { mail, envelope, token: decryptResetToken(envelope) };
+  return { mail, envelope, token: decryptOutboxToken(envelope) };
 }
 
 it("returns the same response for known, unknown, and unverified addresses", async () => {
@@ -38,7 +38,7 @@ it("returns the same response for known, unknown, and unverified addresses", asy
     where: { type: "PASSWORD_RESET", recipient: { in: [unknown, unverified.user.email] } },
   })).toBe(0);
   const mail = await prisma.emailOutbox.findFirstOrThrow({ where: { recipient: user.email, type: "PASSWORD_RESET" } });
-  const token = decryptResetToken((mail.payload as { encryptedToken: string }).encryptedToken);
+  const token = decryptOutboxToken((mail.payload as { encryptedToken: string }).encryptedToken);
   expect(JSON.stringify(mail.payload)).not.toContain(token);
   const stored = await prisma.verificationToken.findUniqueOrThrow({ where: { tokenHash: hashToken(token) } });
   expect(stored).toMatchObject({ userId: user.id, purpose: "PASSWORD_RESET", consumedAt: null });

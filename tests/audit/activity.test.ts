@@ -4,6 +4,7 @@ import { afterAll, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
 import { recordAuditEvent } from "../../src/modules/audit/audit.service.js";
+import { decryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
 import { createTestUser } from "../helpers.js";
 
 afterAll(() => prisma.$disconnect());
@@ -110,7 +111,7 @@ it("records invitation acceptance without keeping email or tokens in audit metad
     .send({ email }).expect(201);
   const id: string = invite.body.data.id;
   const outbox = await prisma.emailOutbox.findFirstOrThrow({ where: { recipient: email, type: "GROUP_INVITATION" } });
-  const { token } = outbox.payload as { token: string };
+  const token = decryptOutboxToken((outbox.payload as { encryptedToken: string }).encryptedToken);
   expect(token).toEqual(expect.any(String));
   const recipient = await createTestUser({ email });
   await request(app).post(`/api/invitations/${id}/accept`).set("Authorization", recipient.authHeader)

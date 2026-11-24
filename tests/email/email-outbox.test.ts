@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../src/lib/prisma.js";
 import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../../src/modules/email/email-outbox.service.js";
 import { sendInvitationEmail, sendPasswordResetEmail } from "../../src/modules/email/email.service.js";
-import { encryptResetToken } from "../../src/modules/email/reset-token-crypto.js";
+import { encryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
 import { hashToken } from "../../src/modules/auth/token.service.js";
 import { enqueueEmailOutboxBatch } from "../../src/queues/email.queue.js";
 
@@ -48,7 +48,7 @@ describe("email outbox", () => {
     vi.stubEnv("PASSWORD_RESET_OUTBOX_KEY", "aa".repeat(32));
     try {
       const token = "A".repeat(43);
-      const payload = { userId: "user-id", encryptedToken: encryptResetToken(token) };
+      const payload = { userId: "user-id", encryptedToken: encryptOutboxToken(token) };
       vi.mocked(prisma.emailOutbox.updateManyAndReturn).mockResolvedValue([
         { ...record, type: "PASSWORD_RESET", payload },
       ]);
@@ -97,7 +97,7 @@ describe("email outbox", () => {
     );
     expect(prisma.emailOutbox.updateMany).toHaveBeenCalledExactlyOnceWith({
       where: { id: record.id, status: "PROCESSING", attempts: 1 },
-      data: { status: "SENT", sentAt: now, lastError: null },
+      data: { status: "SENT", sentAt: now, lastError: null, payload: {} },
     });
   });
 
@@ -107,10 +107,10 @@ describe("email outbox", () => {
       .mockResolvedValueOnce([{ ...record, attempts: 2 }]);
     vi.mocked(sendInvitationEmail).mockRejectedValueOnce(new Error("Provider unavailable"));
 
-    await expect(deliverEmailOutbox(record.id)).rejects.toThrow("Provider unavailable");
+    await expect(deliverEmailOutbox(record.id)).rejects.toThrow("Email delivery failed");
     expect(prisma.emailOutbox.updateMany).toHaveBeenCalledWith({
       where: { id: record.id, status: "PROCESSING", attempts: 1 },
-      data: { status: "FAILED", availableAt: new Date(now.getTime() + 30_000), lastError: "Provider unavailable" },
+      data: { status: "FAILED", availableAt: new Date(now.getTime() + 30_000), lastError: "Email delivery failed" },
     });
 
     vi.setSystemTime(new Date(now.getTime() + 30_000));

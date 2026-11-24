@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requestLimits } from "../../middleware/rate-limit.middleware.js";
 import { authenticate } from "../auth/auth.middleware.js";
 import {
   createExpenseController,
@@ -11,7 +12,7 @@ import {
 
 const router = Router({ mergeParams: true });
 
-router.post("/", authenticate, createExpenseController);
+router.post("/", authenticate, requestLimits.createExpense, createExpenseController);
 router.get("/", authenticate, listExpensesController);
 router.get("/:expenseId", authenticate, getExpenseController);
 router.get(

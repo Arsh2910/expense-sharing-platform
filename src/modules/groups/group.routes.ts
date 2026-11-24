@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requestLimits } from "../../middleware/rate-limit.middleware.js";
 import { authenticate } from "../auth/auth.middleware.js";
 import { listGroupActivityController } from "../audit/activity.controller.js";
 import { getGroupBalancesController } from "../balances/balance.controller.js";
@@ -31,7 +32,7 @@ router.delete("/:groupId", authenticate, archiveGroupController);
 router.post("/:groupId/members", authenticate, addGroupMemberController);
 router.post("/:groupId/invitations", authenticate, createInvitationController);
 router.get("/:groupId/invitations", authenticate, listGroupInvitationsController);
-router.post("/:groupId/invitations/:invitationId/resend", authenticate, resendInvitationController);
+router.post("/:groupId/invitations/:invitationId/resend", authenticate, requestLimits.resendInvitation, resendInvitationController);
 router.post("/:groupId/invitations/:invitationId/revoke", authenticate, revokeInvitationController);
 router.get("/:groupId/members", authenticate, listGroupMembersController);
 router.delete("/:groupId/members/:targetUserId", authenticate, removeGroupMemberController);
