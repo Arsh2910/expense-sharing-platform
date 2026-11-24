@@ -141,6 +141,7 @@ model Group {
   groupBalances GroupBalance[]
   settlements   Settlement[]
   invitations   GroupInvitation[]
+  auditEvents   AuditEvent[]
 
   @@map("groups")
 }
@@ -354,4 +355,23 @@ model Notification {
   @@index([recipientId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([recipientId, readAt])
   @@map("notifications")
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  groupId    String   @map("group_id") @db.Uuid
+  action     String   @db.VarChar(80)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.Uuid
+  metadata   Json?    @db.JsonB
+  requestId  String?  @map("request_id") @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([groupId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_events")
 }

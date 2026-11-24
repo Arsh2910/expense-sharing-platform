@@ -37,11 +37,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ComingSoonPanel, EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { GroupActivity } from "@/features/activity/group-activity";
 import { BalancesView } from "@/features/balances/components/balances-view";
 import { AddExpenseDialog } from "@/features/expenses/components/add-expense-dialog";
 import { ExpenseDetailsDialog } from "@/features/expenses/components/expense-details-dialog";
@@ -70,14 +71,13 @@ const TABS: ReadonlyArray<{
   id: GroupTab;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  comingSoon?: boolean;
 }> = [
   { id: "members", label: "Members", icon: Users },
   { id: "invitations", label: "Invitations", icon: UserPlus },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "balances", label: "Balances", icon: Scale },
   { id: "settlements", label: "Settlements", icon: ArrowLeftRight },
-  { id: "activity", label: "Activity", icon: Activity, comingSoon: true },
+  { id: "activity", label: "Activity", icon: Activity },
 ];
 
 export function GroupDetailsPage() {
@@ -627,14 +627,7 @@ export function GroupDetailsPage() {
         />
       )}
 
-      {activeTab === "activity" && (
-        <ComingSoonPanel
-          icon={Activity}
-          title="Group activity feed"
-          description="Review a chronological log of expenses, edits, settlements, and membership changes for this group."
-          detail="Activity history will populate automatically once the activity feed endpoint is implemented."
-        />
-      )}
+      {activeTab === "activity" && group && <GroupActivity groupId={group.id} />}
 
       {/* Dialogs */}
       {group && (

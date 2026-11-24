@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { recordAuditEvent } from "../audit/audit.service.js";
 import { enqueueEmailOutbox } from "../../queues/email.queue.js";
 import { hashToken } from "../auth/token.service.js";
 import type { CreateInvitationInput } from "./invitation.schema.js";
@@ -144,6 +145,10 @@ export async function createInvitation(groupId: string, actorUserId: string, inp
       const outboxId = invitedEmail && token
         ? await createEmailOutbox(tx, invitation, invitedEmail, token)
         : undefined;
+      await recordAuditEvent(tx, {
+        groupId, actorId: actorUserId, action: "MEMBER_INVITED", entityId: invitation.id,
+        metadata: { invitedUserId: invitation.invitedUserId },
+      });
       return { invitation: response(invitation), outboxId };
     });
     await enqueueAfterCommit(result.outboxId);
@@ -233,7 +238,12 @@ export async function revokeInvitation(groupId: string, invitationId: string, us
     const invitation = await getInvitation(tx, invitationId, groupId);
     const now = new Date();
     requirePending(invitation, now);
-    return response(await updatePending(tx, invitation, now, { status: "REVOKED", revokedAt: now }));
+    const revoked = await updatePending(tx, invitation, now, { status: "REVOKED", revokedAt: now });
+    await recordAuditEvent(tx, {
+      groupId, actorId: userId, action: "INVITATION_REVOKED", entityId: invitation.id,
+      metadata: { invitedUserId: invitation.invitedUserId },
+    });
+    return response(revoked);
   });
 }
 
@@ -283,6 +293,9 @@ async function respondToInvitation(invitationId: string, userId: string, action:
 
       if (action === "DECLINED") {
         await updatePending(tx, invitation, now, { status: action, declinedAt: now });
+        await recordAuditEvent(tx, {
+          groupId: invitation.groupId, actorId: userId, action: "INVITATION_DECLINED", entityId: invitationId,
+        });
         return { id: invitationId, status: action };
       }
 
@@ -296,6 +309,9 @@ async function respondToInvitation(invitationId: string, userId: string, action:
         where: { groupId_userId: { groupId: invitation.groupId, userId } },
         create: { groupId: invitation.groupId, userId, amount: 0n },
         update: {},
+      });
+      await recordAuditEvent(tx, {
+        groupId: invitation.groupId, actorId: userId, action: "INVITATION_ACCEPTED", entityId: invitationId,
       });
       return response(accepted);
     });

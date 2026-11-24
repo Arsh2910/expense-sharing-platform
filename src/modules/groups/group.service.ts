@@ -1,4 +1,6 @@
+import type { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { recordAuditEvent } from "../audit/audit.service.js";
 import type {
   AddGroupMemberInput,
   CreateGroupInput,
@@ -39,6 +41,11 @@ export class GroupMembershipError extends Error {
   }
 }
 
+// Serialize group settings and membership transitions before reading their previous values.
+async function lockGroupForMutation(tx: Prisma.TransactionClient, groupId: string) {
+  await tx.$queryRaw`SELECT id FROM groups WHERE id = ${groupId}::uuid FOR NO KEY UPDATE`;
+}
+
 export async function createGroup(
   input: CreateGroupInput,
   ownerUserId: string,
@@ -65,7 +72,7 @@ export async function createGroup(
     }
 
     // Create group and initial owner membership atomically.
-    return tx.group.create({
+    const created = await tx.group.create({
       data: {
         name: input.name,
         currency: input.currency,
@@ -102,6 +109,11 @@ export async function createGroup(
         },
       },
     });
+    await recordAuditEvent(tx, {
+      groupId: created.id, actorId: ownerUserId, action: "GROUP_CREATED", entityId: created.id,
+      metadata: { name: created.name },
+    });
+    return created;
   });
 }
 
@@ -192,11 +204,13 @@ export async function updateGroup(
   input: UpdateGroupInput,
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockGroupForMutation(tx, groupId);
     const group = await tx.group.findUnique({
       where: { id: groupId },
       select: {
         id: true,
         archivedAt: true,
+        name: true,
       },
     });
 
@@ -236,7 +250,7 @@ export async function updateGroup(
       );
     }
 
-    return tx.group.update({
+    const updated = await tx.group.update({
       where: { id: groupId },
       data: {
         name: input.name,
@@ -249,11 +263,19 @@ export async function updateGroup(
         archivedAt: true,
       },
     });
+    if (group.name !== updated.name) {
+      await recordAuditEvent(tx, {
+        groupId, actorId: actorUserId, action: "GROUP_RENAMED", entityId: groupId,
+        metadata: { fromName: group.name, toName: updated.name },
+      });
+    }
+    return updated;
   });
 }
 
 export async function archiveGroup(groupId: string, actorUserId: string) {
   return prisma.$transaction(async (tx) => {
+    await lockGroupForMutation(tx, groupId);
     const group = await tx.group.findUnique({
       where: { id: groupId },
       select: {
@@ -299,7 +321,7 @@ export async function archiveGroup(groupId: string, actorUserId: string) {
     }
 
     const now = new Date();
-    return tx.group.update({
+    const archived = await tx.group.update({
       where: { id: groupId },
       data: {
         archivedAt: now,
@@ -312,6 +334,8 @@ export async function archiveGroup(groupId: string, actorUserId: string) {
         archivedAt: true,
       },
     });
+    await recordAuditEvent(tx, { groupId, actorId: actorUserId, action: "GROUP_ARCHIVED", entityId: groupId });
+    return archived;
   });
 }
 
@@ -528,6 +552,7 @@ export async function removeGroupMember(
   targetUserId: string,
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockGroupForMutation(tx, groupId);
     const group = await tx.group.findUnique({
       where: { id: groupId },
       select: {
@@ -596,6 +621,11 @@ export async function removeGroupMember(
     const now = new Date();
     const isSelfLeave = actorUserId === targetUserId;
 
+    const recordRemoval = () => recordAuditEvent(tx, {
+      groupId, actorId: actorUserId, action: isSelfLeave ? "MEMBER_LEFT" : "MEMBER_REMOVED",
+      entityId: targetMembership.id, metadata: { userId: targetUserId },
+    });
+
     if (isSelfLeave) {
       if (actorMembership.role === "OWNER") {
         const activeOwnerCount = await tx.groupMembership.count({
@@ -616,7 +646,7 @@ export async function removeGroupMember(
               user: { status: "ACTIVE" },
             },
             orderBy: [{ joinedAt: "asc" }, { userId: "asc" }],
-            select: { id: true, userId: true },
+            select: { id: true, userId: true, role: true },
           });
 
           await tx.groupMembership.update({
@@ -624,10 +654,16 @@ export async function removeGroupMember(
             data: { leftAt: now },
           });
 
+          await recordRemoval();
+
           if (successor) {
             await tx.groupMembership.update({
               where: { id: successor.id },
               data: { role: "OWNER" },
+            });
+            await recordAuditEvent(tx, {
+              groupId, actorId: actorUserId, action: "MEMBER_ROLE_CHANGED", entityId: successor.id,
+              metadata: { userId: successor.userId, fromRole: successor.role, toRole: "OWNER" },
             });
 
             return {
@@ -642,6 +678,7 @@ export async function removeGroupMember(
               where: { id: groupId },
               data: { archivedAt: now },
             });
+            await recordAuditEvent(tx, { groupId, actorId: actorUserId, action: "GROUP_ARCHIVED", entityId: groupId });
 
             return {
               groupId,
@@ -659,6 +696,7 @@ export async function removeGroupMember(
         data: { leftAt: now },
       });
 
+      await recordRemoval();
       return {
         groupId,
         removedUserId: targetUserId,
@@ -712,6 +750,7 @@ export async function removeGroupMember(
       data: { leftAt: now },
     });
 
+    await recordRemoval();
     return {
       groupId,
       removedUserId: targetUserId,
@@ -729,6 +768,7 @@ export async function updateMemberRole(
   input: UpdateMemberRoleInput,
 ) {
   return prisma.$transaction(async (tx) => {
+    await lockGroupForMutation(tx, groupId);
     const group = await tx.group.findUnique({
       where: { id: groupId },
       select: {
@@ -817,7 +857,7 @@ export async function updateMemberRole(
       }
     }
 
-    return tx.groupMembership.update({
+    const updated = await tx.groupMembership.update({
       where: { id: targetMembership.id },
       data: {
         role: input.role,
@@ -835,6 +875,13 @@ export async function updateMemberRole(
         },
       },
     });
+    if (targetMembership.role !== updated.role) {
+      await recordAuditEvent(tx, {
+        groupId, actorId: actorUserId, action: "MEMBER_ROLE_CHANGED", entityId: updated.id,
+        metadata: { userId: targetUserId, fromRole: targetMembership.role, toRole: updated.role },
+      });
+    }
+    return updated;
   });
 }
 

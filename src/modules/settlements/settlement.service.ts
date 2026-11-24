@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { recordAuditEvent } from "../audit/audit.service.js";
 import {
   lockBalanceRows,
   recomputeLockedBalances,
@@ -241,6 +242,10 @@ export async function createSettlement(
       input.toUserId,
     ]);
     await notifySettlementParticipants(tx, settlement, actorUserId);
+    await recordAuditEvent(tx, {
+      groupId, actorId: actorUserId, action: "SETTLEMENT_CREATED", entityId: settlement.id,
+      metadata: { fromUserId: settlement.fromUserId, toUserId: settlement.toUserId },
+    });
     await completeIdempotency(
       tx,
       actorUserId,
@@ -326,6 +331,10 @@ export async function reverseSettlement(
       original.toUserId,
     ]);
     await notifySettlementParticipants(tx, reversal, actorUserId);
+    await recordAuditEvent(tx, {
+      groupId, actorId: actorUserId, action: "SETTLEMENT_REVERSED", entityId: reversal.id,
+      metadata: { fromUserId: reversal.fromUserId, toUserId: reversal.toUserId, reversesId: original.id },
+    });
     return settlementResponse(reversal, group.currency);
   });
 }

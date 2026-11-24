@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { recordAuditEvent } from "../audit/audit.service.js";
 import {
   computeSplits,
   expenseMoney,
@@ -441,6 +442,10 @@ export async function createExpense(
       });
       await recomputeLockedBalances(tx, groupId, prepared.allocationUserIds);
       await notifyExpenseParticipants(tx, revision.id, actorUserId, prepared.allocationUserIds);
+      await recordAuditEvent(tx, {
+        groupId, actorId: actorUserId, action: "EXPENSE_CREATED", entityId: expense.id,
+        metadata: { description: expense.description, version: expense.version },
+      });
       await completeIdempotency(
         tx,
         actorUserId,
@@ -636,6 +641,10 @@ export async function updateExpense(
       });
       await recomputeLockedBalances(tx, groupId, affectedUserIds);
       await notifyExpenseParticipants(tx, revision.id, actorUserId, affectedUserIds);
+      await recordAuditEvent(tx, {
+        groupId, actorId: actorUserId, action: "EXPENSE_UPDATED", entityId: updated.id,
+        metadata: { description: updated.description, fromVersion: current.version, toVersion: updated.version },
+      });
 
       return expenseResponse(updated, group.currency);
     });
@@ -708,6 +717,10 @@ export async function deleteExpense(
     });
     await recomputeLockedBalances(tx, groupId, affectedUserIds);
     await notifyExpenseParticipants(tx, revision.id, actorUserId, affectedUserIds);
+    await recordAuditEvent(tx, {
+      groupId, actorId: actorUserId, action: "EXPENSE_DELETED", entityId: tombstone.id,
+      metadata: { description: tombstone.description, version: tombstone.version },
+    });
 
     return {
       id: expenseId,
