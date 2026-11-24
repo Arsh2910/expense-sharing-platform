@@ -8,6 +8,8 @@ import {
   changeEmailSchema,
   deleteAccountSchema,
   verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "./auth.schema.js";
 import {
   registerUser,
@@ -21,6 +23,8 @@ import {
   deleteAccount,
   registrationVerification,
   AuthServiceError,
+  requestPasswordReset,
+  resetPassword,
 } from "./auth.service.js";
 import { accessCookieName, refreshCookieName } from "./token.service.js";
 
@@ -265,6 +269,47 @@ export const removeAccount: RequestHandler = async (req, res, next) => {
       res.status(
         error.code === "PASSWORD_INVALID" ? 401 : 409,
       ).json({ message: error.message });
+      return;
+    }
+    next(error);
+  }
+};
+
+const forgotPasswordResponse = "If an eligible account exists, a password reset link will be sent.";
+const invalidResetLink = "Invalid or expired reset link";
+
+export const forgotPassword: RequestHandler = async (req, res) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: "Enter a valid email address" });
+    return;
+  }
+  try {
+    await requestPasswordReset(parsed.data.email);
+  } catch {
+    // Keep both the response and logs free of account identifiers and token data.
+    console.error("Password reset request could not be queued");
+  }
+  res.status(202).json({ message: forgotPasswordResponse });
+};
+
+export const resetPasswordController: RequestHandler = async (req, res, next) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const tokenInvalid = parsed.error.issues.some((issue) => issue.path[0] === "token");
+    res.status(400).json({ message: tokenInvalid ? invalidResetLink : "Use at least 8 characters and at most 72 UTF-8 bytes" });
+    return;
+  }
+  try {
+    if (!await resetPassword(parsed.data.token, parsed.data.newPassword)) {
+      res.status(400).json({ message: invalidResetLink });
+      return;
+    }
+    clearAuthCookies(res);
+    res.json({ message: "Password updated. Sign in with your new password." });
+  } catch (error) {
+    if (error instanceof AuthServiceError && error.code === "TOKEN_INVALID") {
+      res.status(400).json({ message: invalidResetLink });
       return;
     }
     next(error);

@@ -78,3 +78,16 @@ export async function sendVerificationEmail(input: VerificationEmail, idempotenc
   }, { idempotencyKey });
   if (error) throw new EmailDeliveryError(error.message);
 }
+
+export async function sendPasswordResetEmail(recipient: string, token: string, idempotencyKey: string) {
+  const url = new URL("/reset-password", getAppBaseUrl());
+  url.hash = new URLSearchParams({ token }).toString();
+  const { error } = await getResend().emails.send({
+    from: getFromAddress(),
+    to: [recipient],
+    subject: "Reset your Expense Sharing password",
+    html: `<h1>Reset your password</h1><p><a href="${escapeHtml(url.toString())}">Choose a new password</a></p>
+      <p>This link expires 30 minutes after it was requested. If you didn't request it, you can ignore this email.</p>`,
+  }, { idempotencyKey });
+  if (error) throw new EmailDeliveryError("Resend rejected the password reset email");
+}

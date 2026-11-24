@@ -21,6 +21,7 @@ interface LoginLocationState {
   sessionExpired?: boolean;
   accountDeleted?: boolean;
   verifiedEmail?: boolean;
+  passwordResetMessage?: string;
 }
 
 export function LoginPage() {
@@ -99,6 +100,8 @@ export function LoginPage() {
             cleared.
           </Alert>
         )}
+
+        {state?.passwordResetMessage && <Alert variant="success">{state.passwordResetMessage}</Alert>}
 
         {state?.verifiedEmail && (
           <Alert variant="success" title="Email verified">
@@ -180,6 +183,8 @@ export function LoginPage() {
               </button>
             </div>
           </FormField>
+
+          <Link to="/forgot-password" className="inline-block text-sm text-[#0F766E] underline">Forgot password?</Link>
 
           <Button
             type="submit"

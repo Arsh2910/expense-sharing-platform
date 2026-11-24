@@ -1,7 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import { enqueueEmailOutboxBatch } from "../../queues/email.queue.js";
 import { hashToken } from "../auth/token.service.js";
-import { sendInvitationEmail, sendVerificationEmail } from "./email.service.js";
+import { sendInvitationEmail, sendPasswordResetEmail, sendVerificationEmail } from "./email.service.js";
+
+import { decryptResetToken } from "./reset-token-crypto.js";
 
 const claimDurationMs = 5 * 60_000;
 const maxAttempts = 5;
@@ -62,7 +64,7 @@ export async function pruneCompletedEmails() {
   const cutoff = new Date(Date.now() - retentionMs);
   await prisma.emailOutbox.deleteMany({
     where: {
-      type: { in: ["GROUP_INVITATION", "EMAIL_VERIFICATION"] },
+      type: { in: ["GROUP_INVITATION", "EMAIL_VERIFICATION", "PASSWORD_RESET"] },
       OR: [
         { status: "SENT", sentAt: { lt: cutoff } },
         { status: "DEAD", availableAt: { lt: cutoff } },
@@ -117,24 +119,50 @@ export async function deliverEmailOutbox(outboxId: string) {
       });
       if (!verification) throw new PermanentEmailError("Verification email is no longer current");
       await sendVerificationEmail({ recipient: record.recipient, token, purpose }, idempotencyKey);
+    } else if (record.type === "PASSWORD_RESET") {
+      if (!record.payload || typeof record.payload !== "object" || Array.isArray(record.payload)) {
+        throw new PermanentEmailError("Invalid password reset email payload");
+      }
+      const { userId, encryptedToken } = record.payload;
+      if (typeof userId !== "string" || typeof encryptedToken !== "string") {
+        throw new PermanentEmailError("Invalid password reset email payload");
+      }
+      const token = decryptResetToken(encryptedToken);
+      const reset = await prisma.verificationToken.findFirst({
+        where: {
+          userId, tokenHash: hashToken(token), purpose: "PASSWORD_RESET",
+          consumedAt: null, expiresAt: { gt: new Date() },
+          user: { status: "ACTIVE", deletedAt: null, emailVerifiedAt: { not: null }, email: record.recipient },
+        },
+        select: { id: true },
+      });
+      if (!reset) throw new PermanentEmailError("Password reset email is no longer current");
+      await sendPasswordResetEmail(record.recipient, token, idempotencyKey);
     } else {
       throw new PermanentEmailError(`Unsupported email type: ${record.type}`);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown email delivery error";
+    const message = record.type === "PASSWORD_RESET" && !(error instanceof PermanentEmailError)
+      ? "Password reset email delivery failed"
+      : error instanceof Error ? error.message : "Unknown email delivery error";
+    const terminal = error instanceof PermanentEmailError || record.attempts >= maxAttempts;
     await prisma.emailOutbox.updateMany({
       where: claim,
       data: {
-        status: error instanceof PermanentEmailError || record.attempts >= maxAttempts ? "DEAD" : "FAILED",
+        status: terminal ? "DEAD" : "FAILED",
+        ...(terminal && record.type === "PASSWORD_RESET" ? { payload: {} } : {}),
         availableAt: new Date(Date.now() + 30_000 * 2 ** Math.min(record.attempts - 1, maxAttempts - 1)),
         lastError: message,
       },
     });
-    throw error;
+    throw record.type === "PASSWORD_RESET" ? new Error(message) : error;
   }
 
   await prisma.emailOutbox.updateMany({
     where: claim,
-    data: { status: "SENT", sentAt: new Date(), lastError: null },
+    data: {
+      status: "SENT", sentAt: new Date(), lastError: null,
+      ...(record.type === "PASSWORD_RESET" ? { payload: {} } : {}),
+    },
   });
 }

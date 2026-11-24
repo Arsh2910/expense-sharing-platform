@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { NotFoundPage } from "@/components/layout/not-found-page";
 import { RouteErrorPage } from "@/components/layout/route-error-page";
 import { ActivityPage } from "@/features/activity/activity-page";
+import { ForgotPasswordPage, ResetPasswordPage } from "@/features/auth/password-reset-pages";
 import { LoginPage } from "@/features/auth/login-page";
 import { RegisterPage } from "@/features/auth/register-page";
 import { VerifyEmailPage } from "@/features/auth/verify-email-page";
@@ -33,10 +34,12 @@ export const router = createBrowserRouter([
         element: <PublicOnlyRoute />,
         children: [
           { path: "/login", element: <LoginPage /> },
+          { path: "/forgot-password", element: <ForgotPasswordPage /> },
           { path: "/register", element: <RegisterPage /> },
           { path: "/verify-pending", element: <VerifyPendingPage /> },
         ],
       },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
       // Accessible both before login (registration verification) and while signed in (email change verification)
       {
         path: "/verify-email",

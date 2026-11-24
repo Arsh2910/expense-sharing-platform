@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../src/lib/prisma.js";
 import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../../src/modules/email/email-outbox.service.js";
-import { sendInvitationEmail } from "../../src/modules/email/email.service.js";
+import { sendInvitationEmail, sendPasswordResetEmail } from "../../src/modules/email/email.service.js";
+import { encryptResetToken } from "../../src/modules/email/reset-token-crypto.js";
+import { hashToken } from "../../src/modules/auth/token.service.js";
 import { enqueueEmailOutboxBatch } from "../../src/queues/email.queue.js";
 
 vi.mock("../../src/lib/prisma.js", () => ({
@@ -11,7 +13,7 @@ vi.mock("../../src/lib/prisma.js", () => ({
     verificationToken: { findFirst: vi.fn() },
   },
 }));
-vi.mock("../../src/modules/email/email.service.js", () => ({ sendInvitationEmail: vi.fn() }));
+vi.mock("../../src/modules/email/email.service.js", () => ({ sendInvitationEmail: vi.fn(), sendPasswordResetEmail: vi.fn() }));
 vi.mock("../../src/queues/email.queue.js", () => ({ enqueueEmailOutboxBatch: vi.fn() }));
 
 const now = new Date("2026-11-23T12:00:00Z");
@@ -42,6 +44,29 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("email outbox", () => {
+  it("decrypts a current password reset, verifies its hash, and clears the delivered payload", async () => {
+    vi.stubEnv("PASSWORD_RESET_OUTBOX_KEY", "aa".repeat(32));
+    try {
+      const token = "A".repeat(43);
+      const payload = { userId: "user-id", encryptedToken: encryptResetToken(token) };
+      vi.mocked(prisma.emailOutbox.updateManyAndReturn).mockResolvedValue([
+        { ...record, type: "PASSWORD_RESET", payload },
+      ]);
+      vi.mocked(prisma.verificationToken.findFirst).mockResolvedValue({ id: "reset-id" } as never);
+      await deliverEmailOutbox(record.id);
+
+      expect(prisma.verificationToken.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ purpose: "PASSWORD_RESET", tokenHash: hashToken(token), consumedAt: null }),
+      }));
+      expect(sendPasswordResetEmail).toHaveBeenCalledWith(record.recipient, token, "email-outbox/outbox-id");
+      expect(prisma.emailOutbox.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ status: "SENT", payload: {} }),
+      }));
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("requeues due pending, failed, and abandoned processing rows", async () => {
     vi.mocked(prisma.emailOutbox.findMany).mockResolvedValue([record]);
     await reconcileEmailOutbox();
@@ -131,7 +156,7 @@ describe("email outbox", () => {
     const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     expect(prisma.emailOutbox.deleteMany).toHaveBeenCalledWith({
       where: {
-        type: { in: ["GROUP_INVITATION", "EMAIL_VERIFICATION"] },
+        type: { in: ["GROUP_INVITATION", "EMAIL_VERIFICATION", "PASSWORD_RESET"] },
         OR: [
           { status: "SENT", sentAt: { lt: cutoff } },
           { status: "DEAD", availableAt: { lt: cutoff } },

@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
+import { encryptResetToken } from "../email/reset-token-crypto.js";
 import { prisma } from "../../lib/prisma.js";
 import {
   createRefreshToken,
@@ -37,6 +38,84 @@ export class AuthServiceError extends Error {
     super(message);
     this.name = "AuthServiceError";
   }
+}
+
+const passwordResetLifetimeMs = 30 * 60_000;
+
+async function lockAuthUser(tx: Prisma.TransactionClient, userId: string) {
+  await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
+}
+
+function invalidatePasswordResets(tx: Prisma.TransactionClient, userId: string, now: Date) {
+  return tx.verificationToken.updateMany({
+    where: { userId, purpose: "PASSWORD_RESET", consumedAt: null },
+    data: { consumedAt: now },
+  });
+}
+
+export async function requestPasswordReset(email: string) {
+  const token = randomBytes(32).toString("base64url");
+  const encryptedToken = encryptResetToken(token);
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findFirst({
+      where: { email, status: "ACTIVE", deletedAt: null, emailVerifiedAt: { not: null } },
+      select: { id: true },
+    });
+    if (!user) return;
+
+    await lockAuthUser(tx, user.id);
+    const eligible = await tx.user.findFirst({
+      where: { id: user.id, email, status: "ACTIVE", deletedAt: null, emailVerifiedAt: { not: null } },
+      select: { id: true },
+    });
+    if (!eligible) return;
+
+    const now = new Date();
+    await invalidatePasswordResets(tx, user.id, now);
+    await tx.verificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(token),
+        purpose: "PASSWORD_RESET",
+        expiresAt: new Date(now.getTime() + passwordResetLifetimeMs),
+      },
+    });
+    await tx.emailOutbox.create({
+      data: { type: "PASSWORD_RESET", recipient: email, payload: { userId: user.id, encryptedToken } },
+    });
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const tokenHash = hashToken(token);
+  const record = await prisma.verificationToken.findFirst({
+    where: { tokenHash, purpose: "PASSWORD_RESET", consumedAt: null, expiresAt: { gt: new Date() } },
+    select: { id: true, userId: true },
+  });
+  if (!record) return false;
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  return prisma.$transaction(async (tx) => {
+    await lockAuthUser(tx, record.userId);
+    const now = new Date();
+    const claimed = await tx.verificationToken.updateMany({
+      where: { id: record.id, purpose: "PASSWORD_RESET", consumedAt: null, expiresAt: { gt: now } },
+      data: { consumedAt: now },
+    });
+    if (claimed.count !== 1) return false;
+
+    const updated = await tx.user.updateMany({
+      where: { id: record.userId, status: "ACTIVE", deletedAt: null, emailVerifiedAt: { not: null } },
+      data: { passwordHash },
+    });
+    if (updated.count !== 1) throw new AuthServiceError("Invalid or expired reset link", "TOKEN_INVALID");
+    await invalidatePasswordResets(tx, record.userId, now);
+    await tx.session.updateMany({
+      where: { userId: record.userId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    return true;
+  });
 }
 
 export interface RegistrationVerification {
@@ -120,17 +199,19 @@ export const registrationVerification: RegistrationVerification = {
           "TOKEN_INVALID",
         );
       }
+      if (record.purpose === "EMAIL_CHANGE") await invalidatePasswordResets(tx, record.userId, consumedAt);
     });
     return record.userId;
   },
 };
 
 async function createSession(
+  tx: Prisma.TransactionClient,
   userId: string,
   meta?: { userAgent?: string; ipAddress?: string },
 ) {
   const refreshToken = createRefreshToken();
-  const session = await prisma.session.create({
+  const session = await tx.session.create({
     data: {
       userId,
       refreshTokenHash: hashToken(refreshToken),
@@ -183,6 +264,15 @@ export async function loginUser(
       "Email verification required",
       "EMAIL_NOT_VERIFIED",
     );
+  const tokens = await prisma.$transaction(async (tx) => {
+    await lockAuthUser(tx, user.id);
+    const current = await tx.user.findFirst({
+      where: { id: user.id, passwordHash: user.passwordHash, status: "ACTIVE", deletedAt: null },
+      select: { id: true },
+    });
+    if (!current) throw new AuthServiceError("Invalid email or password", "INVALID_CREDENTIALS");
+    return createSession(tx, user.id, meta);
+  });
   return {
     user: {
       id: user.id,
@@ -193,7 +283,7 @@ export async function loginUser(
       emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt,
     },
-    ...(await createSession(user.id, meta)),
+    ...tokens,
   };
 }
 
@@ -228,6 +318,7 @@ export async function refreshSession(
   let next: { refreshToken: string; accessToken: string };
   try {
     next = await prisma.$transaction(async (tx) => {
+      await lockAuthUser(tx, session.userId);
       const rotated = await tx.session.updateMany({
         where: {
           id: session.id,
@@ -322,16 +413,20 @@ export async function changePassword(
       "Current password is incorrect",
       "PASSWORD_INVALID",
     );
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: await bcrypt.hash(newPassword, 12) },
-    }),
-    prisma.session.updateMany({
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.updateMany({
+      where: { id: userId, passwordHash: user.passwordHash },
+      data: { passwordHash },
+    });
+    if (updated.count !== 1) throw new AuthServiceError("Current password is incorrect", "PASSWORD_INVALID");
+    const now = new Date();
+    await invalidatePasswordResets(tx, userId, now);
+    await tx.session.updateMany({
       where: { userId, id: { not: currentSessionId }, revokedAt: null },
-      data: { revokedAt: new Date() },
-    }),
-  ]);
+      data: { revokedAt: now },
+    });
+  });
 }
 export async function changeEmail(
   userId: string,

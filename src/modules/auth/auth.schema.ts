@@ -23,3 +23,14 @@ export const deleteAccountSchema = z.object({ currentPassword: z.string().min(1)
 export const verifyEmailSchema = z.object({ token: z.string().min(20) });
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email().max(255)),
+});
+export const resetPasswordSchema = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/, "Invalid or expired reset link"),
+  newPassword: z.string().min(8).refine(
+    (value) => Buffer.byteLength(value, "utf8") <= 72,
+    "Password must be at most 72 UTF-8 bytes",
+  ),
+});
