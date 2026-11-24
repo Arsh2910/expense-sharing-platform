@@ -22,9 +22,10 @@ export function ActivityPage() {
 
       <ComingSoonPanel
         icon={Activity}
-        title="Account activity feed"
-        description="Once the Expense, Settlement, and Activity History endpoints are implemented on the backend, every financial event and group change will appear here in chronological order with full audit details."
-        detail="No mock activity is displayed so your ledger remains strictly factual."
+        title="Activity lives inside each group"
+        description="Open a group to view its chronological expense, settlement, membership, and audit history."
+        detail="No mock activity is displayed; every event comes from the group audit history."
+        statusLabel="Available in groups"
       />
     </div>
   );

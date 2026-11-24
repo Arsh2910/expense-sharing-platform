@@ -57,7 +57,7 @@ function BalancePreviewCard({
           </span>
           <Badge variant="neutral" className="text-[11px]">
             <Clock className="h-3 w-3 text-[#71717A]" aria-hidden="true" />
-            Coming soon
+            Group view
           </Badge>
         </div>
         <p className="mt-2 text-xs text-[#71717A] leading-relaxed">
@@ -96,17 +96,17 @@ export function DashboardPage() {
           <BalancePreviewCard
             label="Total net balance"
             icon={Scale}
-            helperText="Available once the Balances API is enabled."
+            helperText="Open a group to view the current net balance."
           />
           <BalancePreviewCard
             label="Others owe you"
             icon={ArrowDownLeft}
-            helperText="Receivables across groups will appear here."
+            helperText="View who owes you inside each group."
           />
           <BalancePreviewCard
             label="You owe others"
             icon={ArrowUpRight}
-            helperText="Outstanding shares across groups will appear here."
+            helperText="View your outstanding shares inside each group."
           />
         </div>
       </section>
@@ -223,8 +223,9 @@ export function DashboardPage() {
           <ComingSoonPanel
             icon={Activity}
             title="Recent activity"
-            description="A live chronological feed of new expenses, edits, and recorded settlements across your groups will appear here."
-            detail="Activity tracking is scheduled after the Expense and Settlement APIs are released."
+            description="Open a group to view its live chronological feed of expenses, edits, settlements, and membership changes."
+            detail="Activity history is available from each group’s details page."
+            statusLabel="Available in groups"
             className="h-full"
           />
         </section>

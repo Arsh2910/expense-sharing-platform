@@ -42,6 +42,7 @@ export interface ComingSoonPanelProps {
   title: string;
   description: string;
   detail?: string;
+  statusLabel?: string;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function ComingSoonPanel({
   title,
   description,
   detail,
+  statusLabel = "Coming soon",
   className,
 }: ComingSoonPanelProps) {
   return (
@@ -69,7 +71,7 @@ export function ComingSoonPanel({
               <h3 className="text-sm font-semibold text-[#18181B]">{title}</h3>
               <Badge variant="neutral">
                 <Clock className="h-3 w-3 text-[#71717A]" aria-hidden="true" />
-                Coming soon
+                {statusLabel}
               </Badge>
             </div>
             <p className="text-sm text-[#52525B] leading-relaxed">

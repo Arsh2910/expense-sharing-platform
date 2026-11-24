@@ -196,9 +196,6 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="border-t border-[#E7E5E0] pt-4 text-center text-xs text-[#71717A]">
-          Self-service password recovery via email is coming soon.
-        </div>
       </div>
     </AuthLayout>
   );

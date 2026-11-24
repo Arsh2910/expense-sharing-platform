@@ -1,6 +1,5 @@
 import { MailCheck, ArrowRight, KeyRound } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AuthLayout } from "@/features/auth/auth-layout";
 
@@ -52,12 +51,6 @@ export function VerifyPendingPage() {
             </p>
           </div>
         </div>
-
-        <Alert variant="info">
-          Re-sending verification emails is not yet available through the API.
-          If your link expires, please contact support or check your inbox
-          folders.
-        </Alert>
 
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <Button asChild className="flex-1">
