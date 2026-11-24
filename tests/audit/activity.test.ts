@@ -78,10 +78,11 @@ it("records settlement creation and only the successful reversal", async () => {
   const { owner, path, groupId } = await createGroup();
   const participant = await createTestUser();
   await joinTestGroup(app, groupId, owner, participant);
+  const settledOn = new Date().toISOString().slice(0, 10);
   const settlement = await request(app).post(`${path}/settlements`).set("Authorization", owner.authHeader)
     .send({
       fromUserId: owner.user.id, toUserId: participant.user.id, amount: "5.00",
-      settledOn: new Date().toISOString().slice(0, 10),
+      settledOn, note: "Bank transfer",
     }).expect(201);
   const settlementId: string = settlement.body.data.id;
   const reverse = () => request(app).post(`${path}/settlements/${settlementId}/reverse`)
@@ -99,6 +100,28 @@ it("records settlement creation and only the successful reversal", async () => {
       metadata: {
         fromUserId: participant.user.id, toUserId: owner.user.id, reversesId: settlementId,
       },
+    }),
+  ]));
+
+  const feed = await listActivity(path, participant.authHeader).expect(200);
+  expect(feed.body.data).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      action: "SETTLEMENT_CREATED",
+      entityId: settlementId,
+      settlement: expect.objectContaining({
+        amountMinor: 500, currency: "USD", settledOn, note: "Bank transfer",
+        fromUser: expect.objectContaining({ displayName: owner.user.displayName }),
+        toUser: expect.objectContaining({ displayName: participant.user.displayName }),
+      }),
+    }),
+    expect.objectContaining({
+      action: "SETTLEMENT_REVERSED",
+      entityId: reversed.body.data.id,
+      settlement: expect.objectContaining({
+        amountMinor: 500, currency: "USD", note: null,
+        fromUser: expect.objectContaining({ displayName: participant.user.displayName }),
+        toUser: expect.objectContaining({ displayName: owner.user.displayName }),
+      }),
     }),
   ]));
 });

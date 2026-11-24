@@ -13,6 +13,14 @@ export interface GroupActivityEvent {
   entityId: string | null;
   actor: ActivityUser | null;
   targetUser: ActivityUser | null;
+  settlement?: {
+    amountMinor: number;
+    currency: string;
+    settledOn: string;
+    fromUser: ActivityUser | null;
+    toUser: ActivityUser | null;
+    note: string | null;
+  } | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
 }

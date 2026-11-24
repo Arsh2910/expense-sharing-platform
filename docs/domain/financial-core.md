@@ -1,6 +1,6 @@
 # Phase 0 — Financial Core Domain Model
 
-Status: **Designed.** Decisions D1, D3, D5, D8 confirmed. Remaining Phase 0 work tracked in §13.
+Status: **Historical domain design and implementation reference.** The financial core, expenses, balances, settlements, invitations, activity, and outbox have since been implemented. Use the root [README](../../README.md) and [deployment guide](../deployment.md) for current operational status.
 Scope: Expense, payer allocation, participant share, group balance.
 Deliberately deferred: settlement reversal mechanics, membership lifecycle, invitations, activity feed, outbox, notification.
 

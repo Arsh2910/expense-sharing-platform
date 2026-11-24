@@ -46,6 +46,31 @@ it("shows an empty state for a group with no activity", async () => {
   expect(await screen.findByText("No group activity yet")).toBeDefined();
 });
 
+it("shows settlement amounts and participants, preserving the original payment direction for reversals", async () => {
+  const payer = { id: "payer", displayName: "Priya", username: "priya" };
+  const recipient = { id: "recipient", displayName: "Dev", username: "dev" };
+  const settlement = {
+    amountMinor: 1250, currency: "USD", settledOn: "2026-11-23",
+    note: "Bank transfer", fromUser: payer, toUser: recipient,
+  };
+  vi.spyOn(activityApi, "listGroupActivity").mockResolvedValue({
+    data: [
+      { ...event, entityId: "4f32a128-id", entityType: "Settlement", action: "SETTLEMENT_CREATED", settlement },
+      {
+        ...event, id: "event-reversal", entityId: "ed19c129-id", entityType: "Settlement", action: "SETTLEMENT_REVERSED",
+        settlement: { ...settlement, fromUser: recipient, toUser: payer, note: null },
+      },
+    ],
+    pagination: { nextCursor: null },
+  });
+  renderActivity();
+
+  expect(await screen.findByText("recorded a $12.50 settlement from Priya to Dev")).toBeDefined();
+  expect(screen.getByText("reversed a $12.50 settlement from Priya to Dev")).toBeDefined();
+  expect(screen.getByText("Paid on Nov 23, 2026 · Bank transfer")).toBeDefined();
+  expect(screen.queryByText(/4f32a128|ed19c129/)).toBeNull();
+});
+
 it("loads the next page using the API cursor and keeps the first page visible", async () => {
   const load = vi.spyOn(activityApi, "listGroupActivity")
     .mockResolvedValueOnce({ data: [event], pagination: { nextCursor: event.id } })

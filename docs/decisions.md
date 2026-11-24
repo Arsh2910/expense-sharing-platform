@@ -79,3 +79,18 @@ Source: [`domain/financial-core.md`](domain/financial-core.md).
 | C7 | Whether pairwise debt explanation is in the MVP read models | read models |
 | C8 | Settlement requests / reminders in the initial release | notifications module |
 | C9 | Whether archived groups can be restored | groups module |
+
+---
+
+## D. Implemented product and operations decisions
+
+| # | Decision | Status | Rationale |
+| --- | --- | --- | --- |
+| O1 | Membership is invitation-only. A group owner or admin cannot directly add an existing user by email. | final | Group membership changes a person's shared financial context. The invited user must explicitly accept before an active membership and zero balance row are created. |
+| O2 | Invitations can target an email address or an existing username. | final | Email invites support people who are not yet registered. Username invites are handled in-app for existing users. |
+| O3 | Email delivery uses a transactional outbox and BullMQ rather than being performed in the request handler. | final | A request can commit its user or invitation state even if the email provider or Redis is temporarily unavailable. The worker reconciles due outbox records later. |
+| O4 | Outbox tokens are encrypted at rest using a shared API and worker key. | final | Verification, password-reset, and invitation tokens must not be stored in clear text inside durable job payloads. |
+| O5 | The deployed MVP uses Vercel for the frontend and Render for the API, PostgreSQL, and Redis-compatible Valkey. | final | It provides a simple, low-cost deployment path while preserving separate web, database, and queue responsibilities. |
+| O6 | The worker is a separately deployable process and is currently manual until an always-on worker host is provisioned. | final | Free Render web-service hosting does not provide the needed background-worker service on the current plan. The queue architecture remains valid and has been verified locally. |
+| O7 | Dashboard balances remain group-scoped. | final | Groups may have different currencies. A cross-group amount would be misleading without an explicit base currency and exchange-rate policy. |
+| O8 | Activity is recorded per group, with an account-wide feed deferred. | final | Group-level activity preserves the group context and keeps the initial read model simple. A unified feed can be added later with pagination and group links. |

@@ -4,17 +4,41 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatMoneyDisplay } from "@/features/expenses/money";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/utils/format";
 import { listGroupActivity, type GroupActivityEvent } from "./activity.api";
+
+const settlementDateFormat = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+});
+
+function settlementActivityDetails(event: GroupActivityEvent) {
+  const reversed = event.action === "SETTLEMENT_REVERSED";
+  const action = reversed ? "reversed" : "recorded";
+  const settlement = event.settlement;
+  if (!settlement) return { summary: `${action} a settlement` };
+
+  // Reversal rows compensate the original payment in the opposite direction.
+  const [payer, recipient] = reversed
+    ? [settlement.toUser, settlement.fromUser]
+    : [settlement.fromUser, settlement.toUser];
+  const amount = formatMoneyDisplay(settlement.amountMinor, settlement.currency);
+  const summary = `${action} a ${amount} settlement from ${payer?.displayName ?? "a group member"} to ${recipient?.displayName ?? "a group member"}`;
+  if (reversed) return { summary };
+
+  const date = settlementDateFormat.format(new Date(settlement.settledOn));
+  const detail = [`Paid on ${date}`, settlement.note].filter(Boolean).join(" · ");
+  return { summary, detail };
+}
 
 function activityDetails(event: GroupActivityEvent) {
   const metadata = event.metadata ?? {};
   const text = (key: string) => typeof metadata[key] === "string" ? metadata[key] : undefined;
   const user = event.targetUser?.displayName;
   const expense = text("description") ?? "an expense";
-  const settlement = event.entityId ? `settlement ${event.entityId.slice(0, 8)}` : "a settlement";
 
   switch (event.action) {
     case "GROUP_CREATED": return { summary: `created ${text("name") ?? "the group"}` };
@@ -39,8 +63,9 @@ function activityDetails(event: GroupActivityEvent) {
           ? `Version ${metadata.fromVersion} → ${metadata.toVersion}` : undefined,
       };
     case "EXPENSE_DELETED": return { summary: `deleted ${expense}` };
-    case "SETTLEMENT_CREATED": return { summary: `recorded ${settlement}` };
-    case "SETTLEMENT_REVERSED": return { summary: `reversed ${settlement}` };
+    case "SETTLEMENT_CREATED":
+    case "SETTLEMENT_REVERSED":
+      return settlementActivityDetails(event);
     default: return { summary: "recorded a group action" };
   }
 }

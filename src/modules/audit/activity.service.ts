@@ -18,6 +18,7 @@ export function listGroupActivity(groupId: string, userId: string, cursor?: stri
       where: { id: groupId },
       select: {
         id: true,
+        currency: true,
         memberships: {
           where: { userId, leftAt: null },
           select: { id: true },
@@ -49,13 +50,25 @@ export function listGroupActivity(groupId: string, userId: string, cursor?: stri
       },
     });
 
-    const page = rows.slice(0, pageSize).map((event) => ({
-      ...event, targetId: targetUserId(event.metadata),
-    }));
+    const page = rows.slice(0, pageSize).map((event) => {
+      const isSettlement = event.action === "SETTLEMENT_CREATED" || event.action === "SETTLEMENT_REVERSED";
+      return { ...event, targetId: targetUserId(event.metadata), settlementId: isSettlement ? event.entityId : null };
+    });
+    const settlementIds = page.flatMap(({ settlementId }) => settlementId ? [settlementId] : []);
+    const settlements = settlementIds.length > 0 ? await tx.settlement.findMany({
+      where: { groupId, id: { in: settlementIds } },
+      select: { id: true, fromUserId: true, toUserId: true, amount: true, settledOn: true, note: true },
+    }) : [];
+    const settlementsById = new Map(settlements.map((settlement) => [settlement.id, settlement]));
+
     const ids = new Set<string>();
     for (const { actorId, targetId } of page) {
       if (actorId) ids.add(actorId);
       if (targetId) ids.add(targetId);
+    }
+    for (const { fromUserId, toUserId } of settlements) {
+      ids.add(fromUserId);
+      ids.add(toUserId);
     }
     const users = ids.size > 0 ? await tx.user.findMany({
       where: { id: { in: [...ids] }, deletedAt: null },
@@ -65,11 +78,22 @@ export function listGroupActivity(groupId: string, userId: string, cursor?: stri
 
     return {
       status: "OK",
-      data: page.map(({ actorId, targetId, ...event }) => ({
-        ...event,
-        actor: actorId ? usersById.get(actorId) ?? null : null,
-        targetUser: targetId ? usersById.get(targetId) ?? null : null,
-      })),
+      data: page.map(({ actorId, targetId, settlementId, ...event }) => {
+        const settlement = settlementId ? settlementsById.get(settlementId) : undefined;
+        return {
+          ...event,
+          actor: actorId ? usersById.get(actorId) ?? null : null,
+          targetUser: targetId ? usersById.get(targetId) ?? null : null,
+          settlement: settlement ? {
+            amountMinor: settlement.amount,
+            currency: group.currency,
+            settledOn: settlement.settledOn.toISOString().slice(0, 10),
+            fromUser: usersById.get(settlement.fromUserId) ?? null,
+            toUser: usersById.get(settlement.toUserId) ?? null,
+            note: event.action === "SETTLEMENT_CREATED" ? settlement.note : null,
+          } : null,
+        };
+      }),
       pagination: { nextCursor: rows.length > pageSize ? page[pageSize - 1].id : null },
     } as const;
   }, { isolationLevel: "RepeatableRead" });
