@@ -7,7 +7,7 @@ services:
     # Free Render plans do not provide pre-deploy commands, so the staging
     # API applies committed migrations during its build. Move this to
     # preDeployCommand when using a paid plan.
-    buildCommand: npm ci && npx prisma generate && npm run migrate:deploy && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run migrate:deploy && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
