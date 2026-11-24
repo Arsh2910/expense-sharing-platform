@@ -30,38 +30,6 @@ services:
         sync: false
       - key: PASSWORD_RESET_OUTBOX_KEY
         sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM_EMAIL
-        sync: false
-
-  - type: worker
-    name: expense-sharing-email-worker
-    runtime: node
-    region: singapore
-    plan: free
-    buildCommand: npm ci && npx prisma generate && npm run build
-    startCommand: npm run start:worker
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: expense-sharing-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: expense-sharing-redis
-          type: keyvalue
-          property: connectionString
-      - key: APP_BASE_URL
-        sync: false
-      - key: PASSWORD_RESET_OUTBOX_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: RESEND_FROM_EMAIL
-        sync: false
 
   - type: keyvalue
     name: expense-sharing-redis
