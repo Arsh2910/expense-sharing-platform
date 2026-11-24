@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { NextFunction, RequestHandler } from "express";
 import {
   addGroupMemberSchema,
   createGroupSchema,
@@ -66,7 +66,7 @@ export const createGroupController: RequestHandler = async (req, res, next) => {
 export const listMyGroupsController: RequestHandler = async (
   req,
   res,
-  next,
+  next: NextFunction,
 ) => {
   try {
     const userId = req.auth?.userId;
@@ -115,7 +115,7 @@ function handleGroupMembershipError(
 
 export const getGroupDetailsController: RequestHandler<{
   groupId: string;
-}> = async (req, res, next) => {
+}> = async (req, res, next: NextFunction) => {
   try {
     const actorUserId = req.auth?.userId;
 
@@ -154,7 +154,7 @@ export const getGroupDetailsController: RequestHandler<{
 
 export const updateGroupController: RequestHandler<{
   groupId: string;
-}> = async (req, res, next) => {
+}> = async (req, res, next: NextFunction) => {
   try {
     const actorUserId = req.auth?.userId;
 
@@ -207,7 +207,7 @@ export const updateGroupController: RequestHandler<{
 
 export const archiveGroupController: RequestHandler<{
   groupId: string;
-}> = async (req, res, next) => {
+}> = async (req, res, next: NextFunction) => {
   try {
     const actorUserId = req.auth?.userId;
 
@@ -249,7 +249,7 @@ export const addGroupMemberController: RequestHandler<{
 }> = async (
   req,
   res,
-  next,
+  next: NextFunction,
 ) => {
   try {
     const actorUserId = req.auth?.userId;
@@ -306,7 +306,7 @@ export const listGroupMembersController: RequestHandler<{
 }> = async (
   req,
   res,
-  next,
+  next: NextFunction,
 ) => {
   try {
     const actorUserId = req.auth?.userId;
@@ -347,7 +347,7 @@ export const listGroupMembersController: RequestHandler<{
 export const removeGroupMemberController: RequestHandler<{
   groupId: string;
   targetUserId: string;
-}> = async (req, res, next) => {
+}> = async (req, res, next: NextFunction) => {
   try {
     const actorUserId = req.auth?.userId;
 
@@ -391,7 +391,7 @@ export const removeGroupMemberController: RequestHandler<{
 export const updateMemberRoleController: RequestHandler<{
   groupId: string;
   targetUserId: string;
-}> = async (req, res, next) => {
+}> = async (req, res, next: NextFunction) => {
   try {
     const actorUserId = req.auth?.userId;
 
