@@ -36,9 +36,8 @@ export function AuthLayout({
   footer,
 }: AuthLayoutProps) {
   return (
-    <main className="flex min-h-dvh flex-col justify-center border-t-4 border-action bg-panel px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center">
-        <div className="mb-8 flex items-center justify-between gap-4">
+    <main className="grid min-h-dvh grid-rows-[auto_1fr] bg-canvas text-ink">
+        <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
           <Link
             to="/"
             className="inline-flex items-center gap-2.5 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus rounded-lg"
@@ -49,23 +48,22 @@ export function AuthLayout({
             </span>
           </Link>
           <ThemeToggle />
-        </div>
+        </header>
 
-        <div className="rounded-xl border border-border-subtle bg-surface p-5 shadow-[0_16px_45px_#18382a12] sm:p-8">
-          <div className="mb-6 space-y-1.5">
-            <h1 className="text-balance text-3xl font-semibold tracking-tight text-ink">
+        <div className="mx-auto grid w-full max-w-md content-start gap-7 px-5 pt-9 pb-12 sm:px-8 md:max-w-4xl md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] md:content-center md:gap-10 md:py-16 lg:gap-16">
+          <div className="min-w-0 space-y-3 md:pt-1">
+            <h1 className="text-balance text-[1.75rem] leading-tight font-extrabold tracking-[-0.035em] md:text-4xl">
               {title}
             </h1>
-            <p className="text-sm text-ink-secondary leading-relaxed">{subtitle}</p>
+            <p className="max-w-[34ch] text-pretty text-sm leading-relaxed text-ink-secondary md:text-base">{subtitle}</p>
           </div>
-          {children}
+          <div className="min-w-0 border-t border-border-subtle pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-10 lg:pl-16">
+            {children}
+            {footer && (
+              <div className="mt-6 border-t border-border-subtle pt-4 text-sm text-ink-secondary">{footer}</div>
+            )}
+          </div>
         </div>
-
-        {footer && (
-          <div className="mt-6 text-center text-sm text-ink-secondary">{footer}</div>
-        )}
-      </div>
-
     </main>
   );
 }

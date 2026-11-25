@@ -94,6 +94,7 @@ export function GroupDetailsPage() {
     setSearchParams((params) => {
       const next = new URLSearchParams(params);
       next.delete("expenseId");
+      next.delete("newExpense");
       if (tab === "members") next.delete("tab");
       else next.set("tab", tab);
       return next;
@@ -653,11 +654,18 @@ export function GroupDetailsPage() {
             groupId={group.id}
             currency={group.currency}
             members={members}
-            open={addExpenseOpen}
+            open={addExpenseOpen || (!isArchived && searchParams.get("newExpense") === "1")}
             onOpenChange={(isOpen) => {
               setAddExpenseOpen(isOpen);
               if (!isOpen) {
                 setSelectedExpenseForEdit(null);
+                if (searchParams.has("newExpense")) {
+                  setSearchParams((params) => {
+                    const next = new URLSearchParams(params);
+                    next.delete("newExpense");
+                    return next;
+                  }, { replace: true });
+                }
               }
             }}
             initialExpense={selectedExpenseForEdit}
@@ -675,6 +683,7 @@ export function GroupDetailsPage() {
             currency={group.currency}
             expenseId={linkedExpenseId ?? selectedExpenseForDetails?.id ?? null}
             members={members}
+            viewerId={user?.id}
             open={detailsDialogOpen || Boolean(linkedExpenseId)}
             onOpenChange={(open) => {
               setDetailsDialogOpen(open);

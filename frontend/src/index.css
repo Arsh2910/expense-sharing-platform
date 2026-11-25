@@ -2,23 +2,26 @@
 
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", var(--font-sans);
 
-  --color-canvas: #f5f5ef;
+  --color-canvas: #f7f8f4;
   --color-surface: #FFFFFF;
   --color-surface-subtle: #F4F3EF;
-  --color-ink: #182b25;
-  --color-panel: #edf2e9;
-  --color-action: #165745;
-  --color-action-hover: #104536;
+  --color-ink: #17231d;
+  --color-panel: #edf4e9;
+  --color-highlight: #c9e9b5;
+  --color-on-highlight: #172b1d;
+  --color-action: #244d3d;
+  --color-action-hover: #1b3c2f;
   --color-on-action: #ffffff;
   --color-chrome: #f9fbf7;
   --color-inverted: #18181b;
   --color-focus: #0f766e;
   --color-scrim: #121b18;
   --color-field-border: #829389;
-  --color-ink-secondary: #52525B;
-  --color-ink-muted: #71717A;
-  --color-border-subtle: #E7E5E0;
+  --color-ink-secondary: #4e5d54;
+  --color-ink-muted: #626e66;
+  --color-border-subtle: #e3e7e1;
   --color-border-strong: #D6D3CD;
 
   --color-accent: #0F766E;
@@ -33,6 +36,8 @@
   --color-surface: #1e2421;
   --color-surface-subtle: #29312d;
   --color-panel: #24362f;
+  --color-highlight: #31492e;
+  --color-on-highlight: #edf5e6;
   --color-chrome: #191e1b;
   --color-ink: #edf3ee;
   --color-ink-secondary: #c0ccc4;
@@ -102,6 +107,8 @@
 }
 
 @layer base {
+  h1, h2, h3 { font-family: var(--font-display); }
+
   html {
     font-family: var(--font-sans);
     background-color: var(--color-canvas);

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { balancesApi } from "./balances.api";
 
 export const balancesKeys = {
@@ -6,15 +6,22 @@ export const balancesKeys = {
   group: (groupId: string) => [...balancesKeys.all, "group", groupId] as const,
 };
 
-export function useGroupBalancesQuery(groupId: string | undefined, enabled = true) {
-  return useQuery({
+function groupBalanceOptions(groupId: string | undefined) {
+  return {
     queryKey: balancesKeys.group(groupId ?? ""),
     queryFn: async () => {
       if (!groupId) throw new Error("Group ID is required to fetch balances");
       const res = await balancesApi.getGroupBalances(groupId);
       return res.data;
     },
-    enabled: Boolean(groupId) && enabled,
-  });
+  };
+}
+
+export function useGroupBalancesQuery(groupId: string | undefined, enabled = true) {
+  return useQuery({ ...groupBalanceOptions(groupId), enabled: Boolean(groupId) && enabled });
+}
+
+export function useGroupsBalances(groupIds: string[]) {
+  return useQueries({ queries: groupIds.map(groupBalanceOptions) });
 }
 

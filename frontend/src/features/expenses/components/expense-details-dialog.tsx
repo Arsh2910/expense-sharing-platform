@@ -40,6 +40,7 @@ export interface ExpenseDetailsDialogProps {
   currency: string;
   expenseId: string | null;
   members: GroupMember[];
+  viewerId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEditExpense?: (expense: ExpenseItem) => void;
@@ -51,6 +52,7 @@ export function ExpenseDetailsDialog({
   currency,
   expenseId,
   members,
+  viewerId,
   open,
   onOpenChange,
   onEditExpense,
@@ -185,6 +187,23 @@ export function ExpenseDetailsDialog({
                   <p>{expense.splits.length} Participant(s)</p>
                 </div>
               </div>
+
+              {viewerId && (
+                <dl className="grid grid-cols-2 gap-3 rounded-lg bg-panel p-3.5 text-sm">
+                  <div>
+                    <dt className="text-xs text-ink-secondary">You paid</dt>
+                    <dd className="mt-1 font-semibold tabular-nums [overflow-wrap:anywhere]">
+                      {formatMoneyDisplay(expense.payers.find((payer) => payer.userId === viewerId)?.amountMinor ?? 0, currency)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-secondary">Your share</dt>
+                    <dd className="mt-1 font-semibold tabular-nums [overflow-wrap:anywhere]">
+                      {formatMoneyDisplay(expense.splits.find((split) => split.userId === viewerId)?.amountMinor ?? 0, currency)}
+                    </dd>
+                  </div>
+                </dl>
+              )}
 
               {/* Payers breakdown */}
               <div className="space-y-2">
