@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { apiRequest } from "@/lib/api/client";
-import { OAuthCompletePage, OAuthOptions } from "./oauth-options";
+import { OAuthCompletePage, OAuthNotice, OAuthOptions } from "./oauth-options";
 
 vi.mock("@/lib/api/client", () => ({
   apiRequest: vi.fn(),
@@ -25,6 +25,27 @@ it("shows a sign-in link only for an enabled provider", async () => {
   const google = await screen.findByRole("link", { name: "Sign in with Google" });
   expect(google.getAttribute("href")).toBe("/api/auth/oauth/google/start");
   expect(screen.queryByRole("link", { name: "Continue with GitHub" })).toBeNull();
+});
+
+it("shows the GitHub mark alongside the accessible sign-in label", async () => {
+  vi.mocked(apiRequest).mockResolvedValue({ data: ["github"] });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <OAuthOptions />
+    </QueryClientProvider>,
+  );
+  const github = await screen.findByRole("link", { name: "Continue with GitHub" });
+  expect(github.getAttribute("href")).toBe("/api/auth/oauth/github/start");
+  expect(github.querySelector("svg[aria-hidden='true'] use")?.getAttribute("href")).toBe("/icons.svg#github-icon");
+});
+
+it("links to email registration when Google cannot establish ownership of the address", () => {
+  render(
+    <MemoryRouter initialEntries={["/login?oauth=verify_locally"]}>
+      <OAuthNotice />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole("link", { name: "Create an account with email" }).getAttribute("href")).toBe("/register");
 });
 
 function Destination() {

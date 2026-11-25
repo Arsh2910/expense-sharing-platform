@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,6 @@ const messages = new Map([
   ["unavailable", "That sign-in option is currently unavailable."],
   ["provider", "The sign-in provider did not respond as expected. Please try again."],
   ["email", "Use a provider account with a verified email. When connecting an account, its email must match your SplitCircle email."],
-  ["verify_locally", "Create a SplitCircle account with your email and verify it first. Then connect Google in Account settings."],
   ["link_required", "An account already uses that email. Sign in with your existing method, then connect the provider in Account settings."],
   ["conflict", "This provider account is already linked, or a different account from that provider is connected."],
   ["session", "Sign in again before using this option."],
@@ -42,6 +41,14 @@ const messages = new Map([
 export function OAuthNotice() {
   const [params] = useSearchParams();
   const result = params.get("oauth");
+  if (result === "verify_locally") {
+    return (
+      <Alert variant="info" title="Verify your email with SplitCircle">
+        <Link to="/register" className="font-medium underline underline-offset-2">Create an account with email</Link>
+        {" "}and verify the address from your inbox. Then connect Google under Account settings.
+      </Alert>
+    );
+  }
   if (!result || !messages.has(result)) return null;
   return <Alert variant={result === "linked" ? "success" : "info"}>{messages.get(result)}</Alert>;
 }
@@ -70,7 +77,14 @@ export function OAuthOptions({ returnTo }: { returnTo?: string }) {
           >
             {provider === "google"
               ? <img src="/google-sign-in.png" width={180} height={40} alt="Sign in with Google" />
-              : "Continue with GitHub"}
+              : (
+                <>
+                  <svg className="size-4 shrink-0" viewBox="0 0 19 19" aria-hidden="true">
+                    <use href="/icons.svg#github-icon" />
+                  </svg>
+                  Continue with GitHub
+                </>
+              )}
           </a>
         </Button>
       ))}
