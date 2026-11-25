@@ -99,16 +99,16 @@ export function GroupActivity({ groupId }: { groupId: string }) {
             description="The feed shows actions recorded after activity tracking was enabled." />
         )}
         {events.length > 0 && (
-          <ol className="divide-y divide-[#E7E5E0]">
+          <ol className="divide-y divide-border-subtle">
             {events.map((event) => {
               const details = activityDetails(event);
               return (
                 <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3 first:pt-0">
                   <div className="min-w-0 break-words text-sm">
                     <p><strong>{event.actor?.displayName ?? "Unknown actor"}</strong> {details.summary}</p>
-                    {details.detail && <p className="mt-1 text-[#52525B]">{details.detail}</p>}
+                    {details.detail && <p className="mt-1 text-ink-secondary">{details.detail}</p>}
                   </div>
-                  <time dateTime={event.createdAt} className="text-xs text-[#52525B]">
+                  <time dateTime={event.createdAt} className="text-xs text-ink-secondary">
                     {formatDateTime(event.createdAt)}
                   </time>
                 </li>

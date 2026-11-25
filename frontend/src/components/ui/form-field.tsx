@@ -37,7 +37,7 @@ export function FormField({
           {error}
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-xs text-[#71717A]">
+        <p id={`${id}-hint`} className="text-xs text-ink-muted">
           {hint}
         </p>
       ) : null}

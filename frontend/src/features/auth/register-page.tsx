@@ -61,13 +61,13 @@ export function RegisterPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Set up your ClearLedger profile to organize groups and shared expenses."
+      subtitle="Set up your SplitCircle profile to organize groups and shared expenses."
       footer={
         <>
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-medium text-[#0F766E] hover:text-[#0D5E57] underline underline-offset-4"
+            className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
           >
             Sign in
           </Link>
@@ -135,7 +135,7 @@ export function RegisterPage() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[#71717A] transition-colors hover:text-[#18181B]"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted transition-colors hover:text-ink"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" aria-hidden="true" />

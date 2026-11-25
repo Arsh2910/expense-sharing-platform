@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function BrandMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
@@ -35,39 +36,37 @@ export function AuthLayout({
   footer,
 }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-[#FAF9F6] px-4 py-10 sm:px-6">
+    <main className="flex min-h-dvh flex-col justify-center border-t-4 border-action bg-panel px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center">
-        <div className="mb-8 flex flex-col items-start">
+        <div className="mb-8 flex items-center justify-between gap-4">
           <Link
             to="/"
-            className="inline-flex items-center gap-2.5 text-[#18181B] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0F766E] rounded-lg"
+            className="inline-flex items-center gap-2.5 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus rounded-lg"
           >
             <BrandMark className="h-8 w-8" />
             <span className="text-lg font-semibold tracking-tight">
-              ClearLedger
+              SplitCircle
             </span>
           </Link>
+          <ThemeToggle />
         </div>
 
-        <div className="rounded-xl border border-[#E7E5E0] bg-white p-7 shadow-[0_1px_3px_rgba(24,24,27,0.05)] sm:p-8">
+        <div className="rounded-xl border border-border-subtle bg-surface p-5 shadow-[0_16px_45px_#18382a12] sm:p-8">
           <div className="mb-6 space-y-1.5">
-            <h1 className="text-xl font-semibold tracking-tight text-[#18181B]">
+            <h1 className="text-balance text-3xl font-semibold tracking-tight text-ink">
               {title}
             </h1>
-            <p className="text-sm text-[#52525B] leading-relaxed">{subtitle}</p>
+            <p className="text-sm text-ink-secondary leading-relaxed">{subtitle}</p>
           </div>
           {children}
         </div>
 
         {footer && (
-          <div className="mt-6 text-center text-sm text-[#52525B]">{footer}</div>
+          <div className="mt-6 text-center text-sm text-ink-secondary">{footer}</div>
         )}
       </div>
 
-      <footer className="mx-auto mt-10 w-full max-w-[420px] text-center text-xs text-[#71717A]">
-        ClearLedger — Transparent shared expense tracking
-      </footer>
-    </div>
+    </main>
   );
 }
 

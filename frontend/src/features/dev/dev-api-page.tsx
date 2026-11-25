@@ -371,17 +371,17 @@ export function DevApiTestingPage() {
   return (
     <div className="space-y-6">
       {/* Dev Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#E7E5E0] pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-subtle pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-[#18181B]">
+            <h1 className="text-2xl font-bold tracking-tight text-ink">
               API Testing Workspace
             </h1>
             <Badge variant="warning" className="font-mono text-xs">
               DEV ONLY
             </Badge>
           </div>
-          <p className="text-sm text-[#52525B]">
+          <p className="text-sm text-ink-secondary">
             Execute, verify, and inspect real Express backend API requests with HttpOnly cookies.
           </p>
         </div>
@@ -412,34 +412,34 @@ export function DevApiTestingPage() {
       {/* Security & Cookie notice */}
       <Alert variant="info" className="text-xs">
         <div className="space-y-1">
-          <p className="font-semibold text-[#18181B] flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4 text-[#0F766E]" />
+          <p className="font-semibold text-ink flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4 text-accent" />
             HttpOnly Cookie Architecture
           </p>
-          <p className="text-[#52525B] leading-relaxed">
-            All requests are dispatched with <code className="bg-white px-1 py-0.5 rounded border border-[#E7E5E0]">credentials: "include"</code>.
-            Because the backend uses secure <strong>HttpOnly</strong> cookies (<code className="text-[#0F766E]">access_token</code>, <code className="text-[#0F766E]">refresh_token</code>), they cannot be read or modified by JavaScript in accordance with the backend design. Inspect them directly in <strong>Browser DevTools &rarr; Application &rarr; Cookies</strong>.
+          <p className="text-ink-secondary leading-relaxed">
+            All requests are dispatched with <code className="bg-surface px-1 py-0.5 rounded border border-border-subtle">credentials: "include"</code>.
+            Because the backend uses secure <strong>HttpOnly</strong> cookies (<code className="text-accent">access_token</code>, <code className="text-accent">refresh_token</code>), they cannot be read or modified by JavaScript in accordance with the backend design. Inspect them directly in <strong>Browser DevTools &rarr; Application &rarr; Cookies</strong>.
           </p>
         </div>
       </Alert>
 
       {/* Test Data Context Bar */}
-      <Card className="bg-[#FAF9F6]/80">
-        <CardHeader className="py-3 px-5 border-b border-[#E7E5E0]">
+      <Card className="bg-surface-subtle/80">
+        <CardHeader className="py-3 px-5 border-b border-border-subtle">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-[#71717A] flex items-center gap-1.5">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
               <Sliders className="h-3.5 w-3.5" />
               Shared Test Context (Reusable across requests)
             </CardTitle>
-            <span className="text-xs text-[#71717A]">
-              Variables: <code className="text-[#0F766E] font-mono">{"{{testEmail}}"}</code>, <code className="text-[#0F766E] font-mono">{"{{selectedGroupId}}"}</code>, etc.
+            <span className="text-xs text-ink-muted">
+              Variables: <code className="text-accent font-mono">{"{{testEmail}}"}</code>, <code className="text-accent font-mono">{"{{selectedGroupId}}"}</code>, etc.
             </span>
           </div>
         </CardHeader>
         <CardContent className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
-              <Label className="text-[11px] text-[#71717A]">Test User Email</Label>
+              <Label className="text-[11px] text-ink-muted">Test User Email</Label>
               <Input
                 value={contextData.testEmail}
                 onChange={(e) => setContextData((p) => ({ ...p, testEmail: e.target.value }))}
@@ -448,7 +448,7 @@ export function DevApiTestingPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-[#71717A]">Test Password</Label>
+              <Label className="text-[11px] text-ink-muted">Test Password</Label>
               <Input
                 value={contextData.testPassword}
                 onChange={(e) => setContextData((p) => ({ ...p, testPassword: e.target.value }))}
@@ -457,7 +457,7 @@ export function DevApiTestingPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-[#71717A]">Active Group ID</Label>
+              <Label className="text-[11px] text-ink-muted">Active Group ID</Label>
               <Input
                 value={contextData.selectedGroupId}
                 onChange={(e) => setContextData((p) => ({ ...p, selectedGroupId: e.target.value }))}
@@ -466,7 +466,7 @@ export function DevApiTestingPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-[#71717A]">Target User ID</Label>
+              <Label className="text-[11px] text-ink-muted">Target User ID</Label>
               <Input
                 value={contextData.targetUserId}
                 onChange={(e) => setContextData((p) => ({ ...p, targetUserId: e.target.value }))}
@@ -475,7 +475,7 @@ export function DevApiTestingPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-[#71717A]">Verification Token</Label>
+              <Label className="text-[11px] text-ink-muted">Verification Token</Label>
               <Input
                 value={contextData.verificationToken}
                 onChange={(e) => setContextData((p) => ({ ...p, verificationToken: e.target.value }))}
@@ -488,21 +488,21 @@ export function DevApiTestingPage() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#E7E5E0] gap-4">
+      <div className="flex border-b border-border-subtle gap-4">
         <button
           type="button"
           onClick={() => setActiveTab("scenarios")}
           className={cn(
             "pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2",
             activeTab === "scenarios"
-              ? "border-[#0F766E] text-[#0F766E]"
-              : "border-transparent text-[#71717A] hover:text-[#18181B]",
+              ? "border-accent text-accent"
+              : "border-transparent text-ink-muted hover:text-ink",
           )}
         >
           <Sparkles className="h-4 w-4" />
           Test Scenarios
           {stats.total > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F3EF] text-[#18181B]">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-surface-subtle text-ink">
               {stats.passed}/{stats.total} Passed
             </span>
           )}
@@ -513,8 +513,8 @@ export function DevApiTestingPage() {
           className={cn(
             "pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2",
             activeTab === "manual"
-              ? "border-[#0F766E] text-[#0F766E]"
-              : "border-transparent text-[#71717A] hover:text-[#18181B]",
+              ? "border-accent text-accent"
+              : "border-transparent text-ink-muted hover:text-ink",
           )}
         >
           <Terminal className="h-4 w-4" />
@@ -526,8 +526,8 @@ export function DevApiTestingPage() {
           className={cn(
             "pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2",
             activeTab === "contracts"
-              ? "border-[#0F766E] text-[#0F766E]"
-              : "border-transparent text-[#71717A] hover:text-[#18181B]",
+              ? "border-accent text-accent"
+              : "border-transparent text-ink-muted hover:text-ink",
           )}
         >
           <Layers className="h-4 w-4" />
@@ -579,7 +579,7 @@ export function DevApiTestingPage() {
                       ? result.passed
                         ? "border-teal-200 bg-teal-50/20"
                         : "border-red-200 bg-red-50/20"
-                      : "border-[#E7E5E0]",
+                      : "border-border-subtle",
                   )}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -598,14 +598,14 @@ export function DevApiTestingPage() {
                         </span>
                         <div className="space-y-0.5 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-semibold text-[#18181B]">
+                            <h3 className="text-sm font-semibold text-ink">
                               {scenario.title}
                             </h3>
-                            <code className="text-xs font-mono text-[#71717A] bg-white px-1.5 py-0.5 rounded border border-[#E7E5E0]">
+                            <code className="text-xs font-mono text-ink-muted bg-surface px-1.5 py-0.5 rounded border border-border-subtle">
                               {interpolatedPath}
                             </code>
                           </div>
-                          <p className="text-xs text-[#52525B] leading-relaxed">
+                          <p className="text-xs text-ink-secondary leading-relaxed">
                             {scenario.description}
                           </p>
                         </div>
@@ -625,7 +625,7 @@ export function DevApiTestingPage() {
                                 FAIL ({result.actualStatus})
                               </Badge>
                             )}
-                            <span className="text-[#71717A] text-[11px] tabular-nums">
+                            <span className="text-ink-muted text-[11px] tabular-nums">
                               {result.durationMs}ms
                             </span>
                           </div>
@@ -644,7 +644,7 @@ export function DevApiTestingPage() {
                     </div>
 
                     {/* Prereq & Expected info */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#71717A] bg-white/70 rounded-md p-2 border border-[#E7E5E0]">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted bg-surface/70 rounded-md p-2 border border-border-subtle">
                       <span>
                         <strong>Expected:</strong> HTTP{" "}
                         {Array.isArray(scenario.expectedStatus)
@@ -666,13 +666,13 @@ export function DevApiTestingPage() {
 
                     {/* Result payload collapse if exists */}
                     {result && (
-                      <div className="space-y-2 pt-1 border-t border-[#E7E5E0]">
-                        <div className="flex items-center justify-between text-xs text-[#71717A]">
+                      <div className="space-y-2 pt-1 border-t border-border-subtle">
+                        <div className="flex items-center justify-between text-xs text-ink-muted">
                           <span className="font-mono">Actual Response Body:</span>
                           <button
                             type="button"
                             onClick={() => handleCopy(JSON.stringify(result.response.body, null, 2), `res-${scenario.id}`)}
-                            className="inline-flex items-center gap-1 hover:text-[#18181B] text-xs font-medium cursor-pointer"
+                            className="inline-flex items-center gap-1 hover:text-ink text-xs font-medium cursor-pointer"
                           >
                             {copiedKey === `res-${scenario.id}` ? (
                               <>
@@ -685,7 +685,7 @@ export function DevApiTestingPage() {
                             )}
                           </button>
                         </div>
-                        <pre className="max-h-40 overflow-auto rounded bg-[#18181B] p-2.5 text-[11px] font-mono text-[#F4F3EF]">
+                        <pre className="max-h-40 overflow-auto rounded bg-inverted p-2.5 text-[11px] font-mono text-surface-subtle">
                           {typeof result.response.body === "object"
                             ? JSON.stringify(result.response.body, null, 2)
                             : result.response.rawText || "(No Content / 204)"}
@@ -716,7 +716,7 @@ export function DevApiTestingPage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Quick Presets</Label>
                   <select
-                    className="w-full text-xs font-mono rounded-lg border border-[#D6D3CD] bg-white p-2"
+                    className="w-full text-xs font-mono rounded-lg border border-border-strong bg-surface p-2"
                     onChange={(e) => {
                       const found = PRESET_ENDPOINTS.find((p) => p.label === e.target.value);
                       if (found) handleSelectPreset(found);
@@ -740,7 +740,7 @@ export function DevApiTestingPage() {
                     <select
                       value={manualMethod}
                       onChange={(e) => setManualMethod(e.target.value as HttpMethod)}
-                      className="mt-1 w-full text-xs font-mono font-bold rounded-lg border border-[#D6D3CD] bg-white p-2"
+                      className="mt-1 w-full text-xs font-mono font-bold rounded-lg border border-border-strong bg-surface p-2"
                     >
                       <option value="GET">GET</option>
                       <option value="POST">POST</option>
@@ -767,7 +767,7 @@ export function DevApiTestingPage() {
                       <button
                         type="button"
                         onClick={() => handleCopy(manualBody, "manual-body")}
-                        className="text-xs text-[#71717A] hover:text-[#18181B] inline-flex items-center gap-1 cursor-pointer"
+                        className="text-xs text-ink-muted hover:text-ink inline-flex items-center gap-1 cursor-pointer"
                       >
                         {copiedKey === "manual-body" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                         Copy Body
@@ -777,7 +777,7 @@ export function DevApiTestingPage() {
                       value={manualBody}
                       onChange={(e) => setManualBody(e.target.value)}
                       rows={6}
-                      className="w-full rounded-lg border border-[#D6D3CD] bg-white p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                      className="w-full rounded-lg border border-border-strong bg-surface p-2.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent"
                       placeholder='{ "key": "value" }'
                     />
                   </div>
@@ -798,7 +798,7 @@ export function DevApiTestingPage() {
           {/* Response inspector */}
           <div className="lg:col-span-6 space-y-4">
             <Card className="h-full flex flex-col">
-              <CardHeader className="py-4 border-b border-[#E7E5E0]">
+              <CardHeader className="py-4 border-b border-border-subtle">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Response Output</CardTitle>
                   {manualResponse && (
@@ -809,7 +809,7 @@ export function DevApiTestingPage() {
                       >
                         {manualResponse.status} {manualResponse.statusText}
                       </Badge>
-                      <span className="text-xs font-mono text-[#71717A] tabular-nums">
+                      <span className="text-xs font-mono text-ink-muted tabular-nums">
                         {manualResponse.durationMs}ms
                       </span>
                     </div>
@@ -822,12 +822,12 @@ export function DevApiTestingPage() {
                   <>
                     {/* Headers Collapsible */}
                     <div className="space-y-1">
-                      <p className="text-xs font-semibold text-[#71717A]">Response Headers</p>
-                      <div className="max-h-24 overflow-auto rounded border border-[#E7E5E0] bg-[#FAF9F6] p-2 text-[11px] font-mono">
+                      <p className="text-xs font-semibold text-ink-muted">Response Headers</p>
+                      <div className="max-h-24 overflow-auto rounded border border-border-subtle bg-surface-subtle p-2 text-[11px] font-mono">
                         {Object.entries(manualResponse.headers).map(([k, v]) => (
                           <div key={k} className="flex gap-2">
-                            <span className="text-[#71717A]">{k}:</span>
-                            <span className="text-[#18181B] truncate">{v}</span>
+                            <span className="text-ink-muted">{k}:</span>
+                            <span className="text-ink truncate">{v}</span>
                           </div>
                         ))}
                       </div>
@@ -836,17 +836,17 @@ export function DevApiTestingPage() {
                     {/* Body */}
                     <div className="space-y-1 flex-1 flex flex-col min-h-[220px]">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-[#71717A]">Response Body</p>
+                        <p className="text-xs font-semibold text-ink-muted">Response Body</p>
                         <button
                           type="button"
                           onClick={() => handleCopy(manualResponse.rawText, "manual-res")}
-                          className="text-xs text-[#71717A] hover:text-[#18181B] inline-flex items-center gap-1 cursor-pointer"
+                          className="text-xs text-ink-muted hover:text-ink inline-flex items-center gap-1 cursor-pointer"
                         >
                           {copiedKey === "manual-res" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                           Copy Response
                         </button>
                       </div>
-                      <pre className="flex-1 overflow-auto rounded bg-[#18181B] p-3 text-xs font-mono text-[#F4F3EF]">
+                      <pre className="flex-1 overflow-auto rounded bg-inverted p-3 text-xs font-mono text-surface-subtle">
                         {typeof manualResponse.body === "object"
                           ? JSON.stringify(manualResponse.body, null, 2)
                           : manualResponse.rawText || "(No Content)"}
@@ -854,7 +854,7 @@ export function DevApiTestingPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#71717A]">
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-ink-muted">
                     <Code2 className="h-8 w-8 mb-2 opacity-50" />
                     <p className="text-sm font-medium">No request sent yet</p>
                     <p className="text-xs mt-1">Select an endpoint or press "Send Request" to observe live output.</p>
@@ -880,14 +880,14 @@ export function DevApiTestingPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-[#E7E5E0] text-[#71717A]">
+                    <tr className="border-b border-border-subtle text-ink-muted">
                       <th className="py-2 pr-3">Method</th>
                       <th className="py-2 pr-3">Route</th>
                       <th className="py-2 pr-3">Auth Required</th>
                       <th className="py-2">Expected Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#F4F3EF] font-mono">
+                  <tbody className="divide-y divide-surface-subtle font-mono">
                     <tr>
                       <td className="py-2 text-teal-800 font-bold">POST</td>
                       <td className="py-2">/api/auth/register</td>
@@ -1023,11 +1023,11 @@ export function DevApiTestingPage() {
                 {UNSUPPORTED_ENDPOINTS.map((item) => (
                   <div
                     key={item.name}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-white border border-amber-200/60 text-xs gap-2"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-surface border border-amber-200/60 text-xs gap-2"
                   >
                     <div>
-                      <span className="font-semibold text-[#18181B]">{item.name}</span>
-                      <p className="text-[#52525B] text-[11px] mt-0.5">{item.reason}</p>
+                      <span className="font-semibold text-ink">{item.name}</span>
+                      <p className="text-ink-secondary text-[11px] mt-0.5">{item.reason}</p>
                     </div>
                     <Badge variant="outline" className="shrink-0 text-[10px]">
                       Not In Backend

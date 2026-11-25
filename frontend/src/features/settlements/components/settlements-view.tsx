@@ -143,16 +143,16 @@ export function SettlementsView({
 
   if (!settlements || settlements.length === 0) {
     return (
-      <Card className="border-dashed border-[#D6D3CD] bg-[#FAF8F5]/40 text-center py-12 px-4">
+      <Card className="border-dashed border-border-strong bg-surface-subtle/40 text-center py-12 px-4">
         <CardContent className="space-y-4 max-w-md mx-auto pt-0">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-[#0F766E]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-accent">
             <ArrowLeftRight className="h-6 w-6" />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-semibold text-[#18181B]">
+            <h3 className="text-base font-semibold text-ink">
               No settlements recorded yet
             </h3>
-            <p className="text-xs text-[#71717A] leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               {isArchived
                 ? "This group is archived and has no settlement records."
                 : `When members pay each other back to settle group debts in ${currency}, record direct payments here.`}
@@ -160,7 +160,7 @@ export function SettlementsView({
           </div>
           {!isArchived && (
             <Button onClick={onRecordSettlement}>
-              <Send className="h-4 w-4 mr-1.5" />
+              <Send className="h-4 w-4" aria-hidden="true" />
               Record settlement
             </Button>
           )}
@@ -178,14 +178,14 @@ export function SettlementsView({
       )}
 
       {/* Header bar */}
-      <div className="flex items-center justify-between pb-1">
-        <p className="text-xs font-medium text-[#71717A]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-3">
+        <p className="text-xs font-medium text-ink-muted">
           Showing {settlements.length} settlement
           {settlements.length === 1 ? "" : "s"}
         </p>
         {!isArchived && (
           <Button size="sm" onClick={onRecordSettlement} className="gap-1.5">
-            <Send className="h-3.5 w-3.5" />
+            <Send className="h-3.5 w-3.5" aria-hidden="true" />
             Record settlement
           </Button>
         )}
@@ -202,12 +202,12 @@ export function SettlementsView({
           return (
             <div
               key={settlement.id}
-              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border transition-all ${
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border transition-colors ${
                 isReversal
                   ? "bg-purple-50/40 border-purple-200"
                   : isReversed
-                    ? "bg-[#FAF8F5]/80 border-[#E7E5E0] opacity-80"
-                    : "bg-white border-[#E7E5E0] hover:border-[#0F766E]/40"
+                    ? "bg-surface-subtle/80 border-border-subtle opacity-80"
+                    : "bg-surface border-border-subtle hover:border-accent/40"
               }`}
             >
               <div className="flex items-start gap-3 min-w-0">
@@ -216,8 +216,8 @@ export function SettlementsView({
                     isReversal
                       ? "bg-purple-100 border-purple-200 text-purple-700"
                       : isReversed
-                        ? "bg-[#F4F3EF] border-[#E7E5E0] text-[#71717A]"
-                        : "bg-teal-50 border-teal-200 text-[#0F766E]"
+                        ? "bg-surface-subtle border-border-subtle text-ink-muted"
+                        : "bg-teal-50 border-teal-200 text-accent"
                   }`}
                 >
                   <ArrowLeftRight className="h-5 w-5" />
@@ -225,11 +225,11 @@ export function SettlementsView({
 
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-sm text-[#18181B]">
+                    <span className="font-semibold text-sm text-ink">
                       {payerName}
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-[#71717A] shrink-0" />
-                    <span className="font-semibold text-sm text-[#18181B]">
+                    <ArrowRight className="h-3.5 w-3.5 text-ink-muted shrink-0" />
+                    <span className="font-semibold text-sm text-ink">
                       {recipientName}
                     </span>
 
@@ -245,7 +245,7 @@ export function SettlementsView({
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-[#71717A]">
+                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {formatDate(settlement.settledOn)}
@@ -258,8 +258,8 @@ export function SettlementsView({
                   </div>
 
                   {settlement.note && (
-                    <p className="text-xs text-[#52525B] flex items-center gap-1 pt-0.5">
-                      <FileText className="h-3 w-3 text-[#71717A] shrink-0" />
+                    <p className="text-xs text-ink-secondary flex items-center gap-1 pt-0.5">
+                      <FileText className="h-3 w-3 text-ink-muted shrink-0" />
                       <span className="italic">"{settlement.note}"</span>
                     </p>
                   )}
@@ -273,13 +273,13 @@ export function SettlementsView({
                       isReversal
                         ? "text-purple-700"
                         : isReversed
-                          ? "text-[#71717A] line-through"
-                          : "text-[#0F766E]"
+                          ? "text-ink-muted line-through"
+                          : "text-accent"
                     }`}
                   >
                     {formatMoneyDisplay(settlement.amountMinor, currency)}
                   </p>
-                  <p className="text-[10px] text-[#71717A]">Direct Payment</p>
+                  <p className="text-[10px] text-ink-muted">Direct Payment</p>
                 </div>
 
                 {!isArchived && !isReversed && !isReversal && (
@@ -288,7 +288,7 @@ export function SettlementsView({
                     size="sm"
                     onClick={() => handleOpenReverseDialog(settlement)}
                     disabled={reverseMutation.isPending}
-                    className="text-xs h-8 text-[#71717A] hover:text-rose-700 hover:border-rose-300"
+                    className="text-xs h-8 text-ink-muted hover:text-rose-700 hover:border-rose-300"
                     title="Reverse this settlement"
                   >
                     <RotateCcw className="h-3.5 w-3.5 mr-1" />

@@ -48,7 +48,7 @@ export function EqualSplitEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-[#71717A]">
+        <span className="text-xs font-medium text-ink-muted">
           Select who shares this expense ({selectedUserIds.length} of {members.length} selected)
         </span>
         <Button
@@ -85,8 +85,8 @@ export function EqualSplitEditor({
               key={member.user.id}
               className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-colors ${
                 isSelected
-                  ? "border-[#0F766E] bg-[#0F766E]/5"
-                  : "border-[#E7E5E0] bg-white hover:bg-[#FAF8F5]"
+                  ? "border-accent bg-accent-tint"
+                  : "border-border-subtle bg-surface hover:bg-surface-subtle"
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -95,21 +95,21 @@ export function EqualSplitEditor({
                   checked={isSelected}
                   onChange={() => handleToggleMember(member.user.id)}
                   disabled={disabled}
-                  className="h-4 w-4 rounded text-[#0F766E] border-gray-300 focus:ring-[#0F766E]"
+                  className="h-4 w-4 rounded text-accent border-gray-300 focus:ring-accent"
                 />
                 <Avatar name={member.user.displayName} size="sm" tone="neutral" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#18181B] truncate">
+                  <p className="text-xs font-semibold text-ink truncate">
                     {member.user.displayName}
                   </p>
-                  <p className="text-[10px] text-[#71717A] truncate">
+                  <p className="text-[10px] text-ink-muted truncate">
                     {member.user.username ? `@${member.user.username}` : member.role}
                   </p>
                 </div>
               </div>
 
               {isSelected && shareMinor !== undefined && totalMinor > 0n && (
-                <span className="text-xs font-mono font-medium text-[#0F766E] tabular-nums shrink-0">
+                <span className="text-xs font-mono font-medium text-accent tabular-nums shrink-0">
                   {formatMoneyDisplay(shareMinor, currency)}
                 </span>
               )}
@@ -119,11 +119,11 @@ export function EqualSplitEditor({
       </div>
 
       {selectedUserIds.length > 0 && totalMinor > 0n && (
-        <div className="rounded-lg bg-[#FAF8F5] p-2.5 text-[11px] text-[#71717A] flex items-center gap-2">
-          <Users className="h-4 w-4 shrink-0 text-[#0F766E]" />
+        <div className="rounded-lg bg-surface-subtle p-2.5 text-[11px] text-ink-muted flex items-center gap-2">
+          <Users className="h-4 w-4 shrink-0 text-accent" />
           <span>
             {selectedUserIds.length} person(s) sharing{" "}
-            <span className="font-mono font-semibold text-[#18181B]">
+            <span className="font-mono font-semibold text-ink">
               {formatMoneyDisplay(totalMinor, currency)}
             </span>
             . Indivisible remainder units are deterministically distributed.

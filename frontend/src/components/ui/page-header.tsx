@@ -26,25 +26,25 @@ export function PageHeader({
         <div>
           <Link
             to={backTo.href}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#52525B] transition-colors hover:text-[#18181B]"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-secondary transition-colors hover:text-ink"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             {backTo.label}
           </Link>
         </div>
       )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#18181B]">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 flex-[1_1_18rem] space-y-1.5">
+          <h1 className="break-words text-3xl font-semibold tracking-[-0.035em] text-ink sm:text-4xl">
             {title}
           </h1>
           {description && (
-            <p className="text-sm text-[#52525B] leading-relaxed">
+            <p className="text-sm text-ink-secondary leading-relaxed">
               {description}
             </p>
           )}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-2.5">{actions}</div>}
+        {actions && <div className="flex min-w-0 flex-wrap items-center gap-2.5">{actions}</div>}
       </div>
     </div>
   );

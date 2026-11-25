@@ -137,14 +137,14 @@ export function EditGroupDialog({
               />
             </FormField>
 
-            <div className="rounded-xl border border-[#E7E5E0] bg-[#FAF8F5] p-3.5 space-y-1.5">
+            <div className="rounded-xl border border-border-subtle bg-surface-subtle p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-[#71717A]">Base Currency</span>
+                <span className="text-xs font-medium text-ink-muted">Base Currency</span>
                 <Badge variant="outline" className="font-mono text-xs">
                   {currency}
                 </Badge>
               </div>
-              <p className="text-[11px] text-[#A1A1AA] leading-relaxed">
+              <p className="text-[11px] text-ink-muted leading-relaxed">
                 Base currency is permanently locked to preserve accounting integrity for past and future transactions.
               </p>
             </div>
@@ -170,21 +170,21 @@ export function EditGroupDialog({
           </form>
 
           {myRole === "OWNER" && (
-            <div className="mt-5 border-t border-[#E7E5E0] pt-4">
+            <div className="mt-5 border-t border-border-subtle pt-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-semibold text-[#B91C1C] flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
                     <AlertCircle className="h-3.5 w-3.5" />
                     Archive this group
                   </p>
-                  <p className="text-[11px] text-[#71717A]">
+                  <p className="text-[11px] text-ink-muted">
                     Archiving locks the group and hides it from all members.
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-[#B91C1C] border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 shrink-0"
+                  className="text-red-700 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 shrink-0"
                   onClick={() => setConfirmArchiveOpen(true)}
                 >
                   <Archive className="h-3.5 w-3.5 mr-1.5" />

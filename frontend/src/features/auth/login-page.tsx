@@ -54,7 +54,7 @@ export function LoginPage() {
       });
       toast({
         title: "Signed in",
-        description: "Welcome back to ClearLedger.",
+        description: "Welcome back to SplitCircle.",
         variant: "success",
       });
       const target =
@@ -76,10 +76,10 @@ export function LoginPage() {
       subtitle="Enter your email and password to access your shared expense groups."
       footer={
         <>
-          New to ClearLedger?{" "}
+          New to SplitCircle?{" "}
           <Link
             to="/register"
-            className="font-medium text-[#0F766E] hover:text-[#0D5E57] underline underline-offset-4"
+            className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
           >
             Create an account
           </Link>
@@ -173,7 +173,7 @@ export function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[#71717A] transition-colors hover:text-[#18181B]"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted transition-colors hover:text-ink"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -184,7 +184,7 @@ export function LoginPage() {
             </div>
           </FormField>
 
-          <Link to="/forgot-password" className="inline-block text-sm text-[#0F766E] underline">Forgot password?</Link>
+          <Link to="/forgot-password" className="inline-block text-sm text-accent underline">Forgot password?</Link>
 
           <Button
             type="submit"

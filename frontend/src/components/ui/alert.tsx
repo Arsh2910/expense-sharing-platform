@@ -13,8 +13,8 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        info: "border-[#E7E5E0] bg-[#F4F3EF]/70 text-[#27272A]",
-        success: "border-teal-200 bg-teal-50/70 text-[#115E59]",
+        info: "border-border-subtle bg-surface-subtle/70 text-ink",
+        success: "border-teal-200 bg-teal-50/70 text-accent",
         warning: "border-amber-200 bg-amber-50/80 text-amber-900",
         error: "border-red-200 bg-red-50/80 text-red-900",
       },

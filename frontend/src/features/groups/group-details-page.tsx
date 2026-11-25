@@ -44,10 +44,12 @@ import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { GroupActivity } from "@/features/activity/group-activity";
 import { BalancesView } from "@/features/balances/components/balances-view";
+import { useGroupBalancesQuery } from "@/features/balances/balances.queries";
 import { AddExpenseDialog } from "@/features/expenses/components/add-expense-dialog";
 import { ExpenseDetailsDialog } from "@/features/expenses/components/expense-details-dialog";
 import { ExpenseList } from "@/features/expenses/components/expense-list";
 import type { ExpenseItem } from "@/features/expenses/expenses.types";
+import { formatMoneyDisplay } from "@/features/expenses/money";
 import { RecordSettlementDialog } from "@/features/settlements/components/record-settlement-dialog";
 import { SettlementsView } from "@/features/settlements/components/settlements-view";
 import { EditGroupDialog } from "@/features/groups/edit-group-dialog";
@@ -123,6 +125,7 @@ export function GroupDetailsPage() {
   const removeMutation = useRemoveGroupMemberMutation(groupId ?? "");
 
   const group = groupDetailsQuery.data;
+  const balancesQuery = useGroupBalancesQuery(groupId, Boolean(group && user));
   const members = membersQuery.data ?? [];
   const isArchived = Boolean(group?.archivedAt);
 
@@ -227,6 +230,13 @@ export function GroupDetailsPage() {
   const canManageSettings = isOwner || isAdmin;
   const canManageInvitations = isOwner || isAdmin;
   const activeTab = requestedTab === "invitations" && !canManageInvitations ? "members" : requestedTab;
+  const myBalance = balancesQuery.data?.members.find((member) => member.userId === user?.id);
+  const balanceCurrency = balancesQuery.data?.currency ?? group?.currency;
+  const balanceAmount = myBalance && balanceCurrency
+    ? formatMoneyDisplay(Math.abs(myBalance.balanceMinor), balanceCurrency)
+    : null;
+  const balanceStatus = myBalance?.direction === "OWES" ? "You owe"
+    : myBalance?.direction === "RECEIVES" ? "You’re owed" : "Settled up";
 
   const handleOpenRoleDialog = (member: GroupMember) => {
     setSelectedMemberForRole(member);
@@ -312,79 +322,74 @@ export function GroupDetailsPage() {
           <div className="flex flex-wrap items-center gap-2">
             {!isArchived && (
               <Button
-                size="sm"
                 onClick={() => {
                   setSelectedExpenseForEdit(null);
                   setAddExpenseOpen(true);
                 }}
               >
-                <Plus className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                <Plus className="h-4 w-4" aria-hidden="true" />
                 Add expense
               </Button>
             )}
 
-            {canManageSettings && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <Settings2 className="h-4 w-4 mr-1.5" aria-hidden="true" />
-                Settings
-              </Button>
-            )}
-
-            {canManageInvitations && !isArchived && activeTab !== "invitations" && (
-              <Button size="sm" onClick={() => setActiveTab("invitations")}>
-                <UserPlus className="h-4 w-4 mr-1.5" aria-hidden="true" />
-                Invite member
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[#71717A] hover:text-[#B91C1C] hover:border-red-200"
-              onClick={() => setLeaveDialogOpen(true)}
-            >
-              <LogOut className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-              Leave
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="size-10" aria-label="Group actions">
+                  <MoreVertical className="size-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canManageInvitations && !isArchived && activeTab !== "invitations" && (
+                  <DropdownMenuItem onSelect={() => setActiveTab("invitations")}>
+                    <UserPlus className="size-4" aria-hidden="true" />
+                    Invite member
+                  </DropdownMenuItem>
+                )}
+                {canManageSettings && (
+                  <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                    <Settings2 className="size-4" aria-hidden="true" />
+                    Group settings
+                  </DropdownMenuItem>
+                )}
+                {canManageSettings && <DropdownMenuSeparator />}
+                <DropdownMenuItem className="text-red-700 focus:text-red-800" onSelect={() => setLeaveDialogOpen(true)}>
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Leave group
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
 
-      {/* Metadata Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-medium text-[#71717A]">Base currency</p>
-            <p className="mt-1.5 text-lg font-semibold tracking-tight text-[#18181B] font-mono">
-              {group?.currency ?? "—"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-medium text-[#71717A]">Active members</p>
-            <p className="mt-1.5 text-lg font-semibold tracking-tight text-[#18181B] tabular-nums">
-              {group?.memberCount ?? members.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs font-medium text-[#71717A]">Your role</p>
-            <div className="mt-2">
-              {myRole ? (
-                <RoleBadge role={myRole} />
-              ) : (
-                <span className="text-sm text-[#71717A]">—</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <section aria-labelledby="group-balance-title" className="rounded-xl bg-panel px-4 py-4 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="group-balance-title" className="text-sm font-medium text-ink-secondary">Your balance</h2>
+            {balancesQuery.isPending ? (
+              <p role="status" className="mt-1 text-sm text-ink-muted">Loading balance…</p>
+            ) : balancesQuery.isError ? (
+              <p className="mt-1 text-sm text-ink-secondary">Balance unavailable.</p>
+            ) : !myBalance ? (
+              <p className="mt-1 text-sm text-ink-secondary">No balance recorded yet.</p>
+            ) : (
+              <p className="mt-1 break-words text-xl font-semibold tracking-tight tabular-nums text-ink">
+                {balanceStatus}{myBalance.direction !== "SQUARE" && balanceAmount && ` ${balanceAmount}`}
+                {balanceCurrency && <span className="ml-2 text-xs font-medium text-ink-secondary">{balanceCurrency}</span>}
+              </p>
+            )}
+          </div>
+          {activeTab !== "balances" && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="?tab=balances">View balance breakdown</Link>
+            </Button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-secondary">
+          <span>{group?.memberCount ?? members.length} active {(group?.memberCount ?? members.length) === 1 ? "member" : "members"}</span>
+          {myRole && <RoleBadge role={myRole} />}
+        </div>
+      </section>
 
       {/* Archived Banner */}
       {isArchived && (
@@ -397,10 +402,10 @@ export function GroupDetailsPage() {
       )}
 
       {/* Section Tabs */}
-      <div className="border-b border-[#E7E5E0]">
+      <div className="rounded-lg border border-border-subtle bg-surface px-1">
         <nav
           aria-label="Group sections"
-          className="-mb-px flex gap-1 overflow-x-auto"
+          className="flex flex-wrap gap-1 py-1"
         >
           {TABS.filter((tab) => tab.id !== "invitations" || canManageInvitations).map((tab) => {
             const Icon = tab.icon;
@@ -409,18 +414,19 @@ export function GroupDetailsPage() {
               <button
                 key={tab.id}
                 type="button"
+                aria-current={isActive ? "true" : undefined}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-3 text-sm font-medium transition-colors cursor-pointer",
+                  "inline-flex shrink-0 items-center gap-2 border-b-2 px-2.5 py-2.5 text-xs sm:px-3.5 sm:py-3 sm:text-sm font-medium transition-colors cursor-pointer",
                   isActive
-                    ? "border-[#0F766E] text-[#0F766E]"
-                    : "border-transparent text-[#52525B] hover:border-[#D6D3CD] hover:text-[#18181B]",
+                    ? "border-accent text-accent"
+                    : "border-transparent text-ink-secondary hover:border-border-strong hover:text-ink",
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 <span>{tab.label}</span>
                 {tab.id === "members" && (
-                  <span className="rounded-md bg-[#F4F3EF] px-1.5 py-0.5 text-[11px] font-medium text-[#52525B] tabular-nums">
+                  <span className="rounded-md bg-surface-subtle px-1.5 py-0.5 text-[11px] font-medium text-ink-secondary tabular-nums">
                     {members.length}
                   </span>
                 )}
@@ -461,7 +467,7 @@ export function GroupDetailsPage() {
                   description="No active members were returned for this group."
                 />
               ) : (
-                <ul className="divide-y divide-[#F4F3EF]">
+                <ul className="divide-y divide-surface-subtle">
                   {members.map((member) => {
                     const isCurrentUser = member.user.id === user?.id;
 
@@ -491,7 +497,7 @@ export function GroupDetailsPage() {
                           />
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium text-[#18181B] truncate">
+                              <p className="text-sm font-medium text-ink truncate">
                                 {member.user.displayName}
                               </p>
                               {isCurrentUser && (
@@ -500,7 +506,7 @@ export function GroupDetailsPage() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-[#71717A] truncate">
+                            <p className="text-xs text-ink-muted truncate">
                               {member.user.username
                                 ? `@${member.user.username}`
                                 : "No username set"}{" "}
@@ -518,7 +524,7 @@ export function GroupDetailsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-[#71717A] hover:text-[#18181B]"
+                                  className="h-8 w-8 p-0 text-ink-muted hover:text-ink"
                                   aria-label="Member actions"
                                 >
                                   <MoreVertical className="h-4 w-4" />
@@ -534,7 +540,7 @@ export function GroupDetailsPage() {
                                   <DropdownMenuItem
                                     onClick={() => handleOpenRoleDialog(member)}
                                   >
-                                    <ShieldCheck className="h-4 w-4 mr-2 text-[#0F766E]" />
+                                    <ShieldCheck className="h-4 w-4 mr-2 text-accent" />
                                     Change Role
                                   </DropdownMenuItem>
                                 )}
@@ -561,10 +567,10 @@ export function GroupDetailsPage() {
           </Card>
 
           {/* Role Capabilities Reference */}
-          <Card className="border-[#E7E5E0] bg-[#FAF8F5]/60">
+          <Card className="border-border-subtle bg-surface-subtle/60">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2 text-[#18181B]">
-                <Shield className="h-4 w-4 text-[#0F766E]" />
+              <CardTitle className="text-sm flex items-center gap-2 text-ink">
+                <Shield className="h-4 w-4 text-accent" />
                 Role & Permissions Overview
               </CardTitle>
               <CardDescription className="text-xs">

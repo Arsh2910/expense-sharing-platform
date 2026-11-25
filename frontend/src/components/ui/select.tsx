@@ -15,18 +15,18 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-lg border bg-white px-3.5 py-2 text-sm text-[#18181B] transition-colors",
+      "flex h-10 w-full items-center justify-between rounded-lg border bg-surface px-3.5 py-2 text-sm text-ink transition-colors",
       "focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50",
       hasError
         ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
-        : "border-[#D6D3CD] hover:border-[#B8B4AC] focus:border-[#0F766E] focus:ring-[#0F766E]/15",
+        : "border-field-border hover:border-action focus:border-action focus:ring-action/25",
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 text-[#71717A]" />
+      <ChevronDown className="h-4 w-4 text-ink-muted" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -41,7 +41,7 @@ export const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-72 min-w-[8rem] overflow-hidden rounded-xl border border-[#E7E5E0] bg-white text-[#18181B] shadow-md",
+        "relative z-50 max-h-72 min-w-[8rem] overflow-hidden rounded-xl border border-border-subtle bg-surface text-ink shadow-md",
         position === "popper" && "w-[var(--radix-select-trigger-width)] translate-y-1",
         className,
       )}
@@ -63,7 +63,7 @@ export const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2 pr-8 pl-3 text-sm outline-none",
-      "focus:bg-[#F4F3EF] focus:text-[#18181B] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "focus:bg-surface-subtle focus:text-ink data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -71,7 +71,7 @@ export const SelectItem = React.forwardRef<
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <span className="absolute right-2.5 flex h-4 w-4 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4 text-[#0F766E]" />
+        <Check className="h-4 w-4 text-accent" />
       </SelectPrimitive.ItemIndicator>
     </span>
   </SelectPrimitive.Item>

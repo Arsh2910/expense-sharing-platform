@@ -147,7 +147,7 @@ export function ExpenseDetailsDialog({
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {expense.category && (
-                      <Badge variant="outline" className="text-xs bg-[#F4F3EF]">
+                      <Badge variant="outline" className="text-xs bg-surface-subtle">
                         {expense.category}
                       </Badge>
                     )}
@@ -158,29 +158,29 @@ export function ExpenseDetailsDialog({
                       {expense.splitType} Split
                     </Badge>
                   </div>
-                  <span className="text-xs text-[#71717A] flex items-center gap-1">
+                  <span className="text-xs text-ink-muted flex items-center gap-1">
                     <Calendar className="h-3.5 w-3.5" />
                     {formatDate(expense.expenseDate)}
                   </span>
                 </div>
-                <DialogTitle className="text-xl font-bold text-[#18181B] pt-2">
+                <DialogTitle className="text-xl font-bold text-ink pt-2">
                   {expense.description}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-[#71717A] flex items-center gap-1.5 pt-1">
+                <DialogDescription className="text-xs text-ink-muted flex items-center gap-1.5 pt-1">
                   <User className="h-3 w-3" />
                   Recorded by <strong>{getMemberName(expense.createdById)}</strong>
                 </DialogDescription>
               </DialogHeader>
 
               {/* Total Card */}
-              <div className="rounded-xl border border-[#E7E5E0] bg-[#FAF8F5]/80 p-4 flex items-center justify-between">
+              <div className="rounded-xl border border-border-subtle bg-surface-subtle/80 p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-[#71717A] font-medium">Total Amount</p>
-                  <p className="text-2xl font-bold text-[#0F766E] tabular-nums">
+                  <p className="text-xs text-ink-muted font-medium">Total Amount</p>
+                  <p className="text-2xl font-bold text-accent tabular-nums">
                     {formatMoneyDisplay(expense.totalMinor, currency)}
                   </p>
                 </div>
-                <div className="text-right text-xs text-[#71717A] space-y-0.5">
+                <div className="text-right text-xs text-ink-muted space-y-0.5">
                   <p>{expense.payers.length} Payer(s)</p>
                   <p>{expense.splits.length} Participant(s)</p>
                 </div>
@@ -188,23 +188,23 @@ export function ExpenseDetailsDialog({
 
               {/* Payers breakdown */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-[#52525B] uppercase tracking-wider flex items-center gap-1.5">
-                  <Receipt className="h-3.5 w-3.5 text-[#0F766E]" />
+                <h4 className="text-xs font-semibold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  <Receipt className="h-3.5 w-3.5 text-accent" />
                   Who Paid
                 </h4>
-                <div className="rounded-lg border border-[#E7E5E0] divide-y divide-[#F4F3EF] overflow-hidden">
+                <div className="rounded-lg border border-border-subtle divide-y divide-surface-subtle overflow-hidden">
                   {expense.payers.map((payer) => (
                     <div
                       key={payer.userId}
-                      className="flex items-center justify-between p-2.5 bg-white text-xs"
+                      className="flex items-center justify-between p-2.5 bg-surface text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <Avatar name={getMemberName(payer.userId)} size="sm" />
-                        <span className="font-medium text-[#18181B]">
+                        <span className="font-medium text-ink">
                           {getMemberName(payer.userId)}
                         </span>
                       </div>
-                      <span className="font-semibold text-[#18181B] tabular-nums">
+                      <span className="font-semibold text-ink tabular-nums">
                         {formatMoneyDisplay(payer.amountMinor, currency)}
                       </span>
                     </div>
@@ -214,19 +214,19 @@ export function ExpenseDetailsDialog({
 
               {/* Splits breakdown */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-[#52525B] uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5 text-[#0F766E]" />
+                <h4 className="text-xs font-semibold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-accent" />
                   Participant Shares ({expense.splitType})
                 </h4>
-                <div className="rounded-lg border border-[#E7E5E0] divide-y divide-[#F4F3EF] overflow-hidden">
+                <div className="rounded-lg border border-border-subtle divide-y divide-surface-subtle overflow-hidden">
                   {expense.splits.map((split) => (
                     <div
                       key={split.userId}
-                      className="flex items-center justify-between p-2.5 bg-white text-xs"
+                      className="flex items-center justify-between p-2.5 bg-surface text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <Avatar name={getMemberName(split.userId)} size="sm" />
-                        <span className="font-medium text-[#18181B]">
+                        <span className="font-medium text-ink">
                           {getMemberName(split.userId)}
                         </span>
                       </div>
@@ -236,7 +236,7 @@ export function ExpenseDetailsDialog({
                             {formatPercentageUnits(BigInt(split.percentUnits))}%
                           </Badge>
                         )}
-                        <span className="font-semibold text-[#18181B] tabular-nums">
+                        <span className="font-semibold text-ink tabular-nums">
                           {formatMoneyDisplay(split.amountMinor, currency)}
                         </span>
                       </div>
@@ -246,7 +246,7 @@ export function ExpenseDetailsDialog({
               </div>
 
               {/* Revision history button */}
-              <div className="pt-1 flex items-center justify-between text-xs text-[#71717A] border-t border-[#E7E5E0]">
+              <div className="pt-1 flex items-center justify-between text-xs text-ink-muted border-t border-border-subtle">
                 <div className="flex items-center gap-1 text-[11px]">
                   <Clock className="h-3 w-3" />
                   <span>Last updated {formatDateTime(expense.updatedAt)}</span>
@@ -256,7 +256,7 @@ export function ExpenseDetailsDialog({
                   variant="ghost"
                   size="sm"
                   onClick={() => setRevisionsOpen(true)}
-                  className="text-xs gap-1.5 text-[#0F766E] hover:text-[#0D5E57]"
+                  className="text-xs gap-1.5 text-accent hover:text-accent-hover"
                 >
                   <History className="h-3.5 w-3.5" />
                   Audit History
@@ -278,7 +278,7 @@ export function ExpenseDetailsDialog({
                 </div>
               )}
 
-              <DialogFooter className="pt-2 border-t border-[#E7E5E0] flex-col-reverse sm:flex-row gap-2 sm:justify-between">
+              <DialogFooter className="pt-2 border-t border-border-subtle flex-col-reverse sm:flex-row gap-2 sm:justify-between">
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   {!isArchived && (
                     <Button

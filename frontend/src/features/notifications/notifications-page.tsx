@@ -66,8 +66,8 @@ export function NotificationsPage() {
       {inbox.isSuccess && items.length === 0 && <Alert>You have no notifications yet.</Alert>}
       {items.length > 0 && (
         <Card>
-          <CardContent>
-            <ul className="divide-y divide-[#E7E5E0]">
+          <CardContent className="pt-5">
+            <ul className="divide-y divide-border-subtle">
               {items.map((item) => (
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-1 last:pb-1">
                   <div className="min-w-0">
@@ -78,7 +78,7 @@ export function NotificationsPage() {
                     {"expenseDescription" in item && item.expenseDescription && (
                       <p className="mt-1 break-words text-sm">{item.expenseDescription}</p>
                     )}
-                    <p className="mt-1 text-sm text-[#52525B]">{formatDate(item.createdAt)}</p>
+                    <p className="mt-1 text-sm text-ink-secondary">{formatDate(item.createdAt)}</p>
                   </div>
                   <Button size="sm" variant="outline" disabled={isUpdating} onClick={async () => {
                     try {

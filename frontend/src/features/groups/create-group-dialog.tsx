@@ -175,7 +175,7 @@ export function CreateGroupDialog({
                   {COMMON_CURRENCIES.map((currency) => (
                     <SelectItem key={currency.code} value={currency.code}>
                       <span className="font-medium">{currency.code}</span>
-                      <span className="text-[#71717A]">
+                      <span className="text-ink-muted">
                         {" "}
                         — {currency.name}
                       </span>

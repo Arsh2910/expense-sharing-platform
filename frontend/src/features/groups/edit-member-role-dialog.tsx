@@ -99,7 +99,7 @@ export function EditMemberRoleDialog({
           <DialogTitle>Change Member Role</DialogTitle>
           <DialogDescription>
             Update permissions for{" "}
-            <span className="font-semibold text-[#18181B]">
+            <span className="font-semibold text-ink">
               {member.user.displayName}
             </span>
             .
@@ -122,8 +122,8 @@ export function EditMemberRoleDialog({
                   className={cn(
                     "flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-colors",
                     isSelected
-                      ? "border-[#0F766E] bg-[#0F766E]/5 ring-1 ring-[#0F766E]"
-                      : "border-[#E7E5E0] bg-white hover:bg-[#FAF8F5]",
+                      ? "border-accent bg-accent-tint ring-1 ring-accent"
+                      : "border-border-subtle bg-surface hover:bg-surface-subtle",
                   )}
                 >
                   <input
@@ -132,14 +132,14 @@ export function EditMemberRoleDialog({
                     value={role}
                     checked={isSelected}
                     onChange={() => setSelectedRole(role)}
-                    className="mt-1 h-4 w-4 text-[#0F766E] border-gray-300 focus:ring-[#0F766E]"
+                    className="mt-1 h-4 w-4 text-accent border-gray-300 focus:ring-accent"
                   />
                   <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-[#18181B] flex items-center gap-1.5">
-                      <Icon className="h-4 w-4 text-[#0F766E]" />
+                    <p className="text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <Icon className="h-4 w-4 text-accent" />
                       {title}
                     </p>
-                    <p className="text-xs text-[#71717A] leading-relaxed">
+                    <p className="text-xs text-ink-muted leading-relaxed">
                       {description}
                     </p>
                   </div>

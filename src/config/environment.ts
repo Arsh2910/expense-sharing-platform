@@ -17,7 +17,12 @@ const envSchema = z.object({
 export function browserOrigins(env: NodeJS.ProcessEnv = process.env) {
   const production = env.NODE_ENV === "production";
   const urls = [
-    ...(production ? [] : ["http://localhost:5173", "http://127.0.0.1:5173"]),
+    ...(production ? [] : [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5183",
+      "http://127.0.0.1:5183",
+    ]),
     ...[env.APP_BASE_URL, ...(env.CORS_ALLOWED_ORIGINS?.split(",") ?? [])]
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value)),

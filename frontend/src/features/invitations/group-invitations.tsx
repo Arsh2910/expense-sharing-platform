@@ -49,7 +49,7 @@ export function GroupInvitations({ groupId, archived }: { groupId: string; archi
               </div>
               <Button type="submit" isLoading={create.isPending} disabled={!target.trim()}>Send invitation</Button>
             </div>
-            <p id="invite-acceptance" className="text-sm text-[#52525B]">They’ll join the group once they accept.</p>
+            <p id="invite-acceptance" className="text-sm text-ink-secondary">They’ll join the group once they accept.</p>
           </form>
         )}
         {create.isError && <Alert variant="error">{getErrorMessage(create.error)}</Alert>}
@@ -66,8 +66,8 @@ export function GroupInvitations({ groupId, archived }: { groupId: string; archi
         )}
         {invitations.isPending && <p role="status">Loading invitations…</p>}
         {invitations.isError && <Alert variant="error">{getErrorMessage(invitations.error)}</Alert>}
-        {invitations.data?.length === 0 && <p className="text-sm text-[#52525B]">No invitations yet.</p>}
-        <ul className="divide-y divide-[#E7E5E0]">
+        {invitations.data?.length === 0 && <p className="text-sm text-ink-secondary">No invitations yet.</p>}
+        <ul className="divide-y divide-border-subtle">
           {invitations.data?.map((invitation) => (
             <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="min-w-0 space-y-1">
@@ -77,7 +77,7 @@ export function GroupInvitations({ groupId, archived }: { groupId: string; archi
                 <div className="flex items-center gap-2">
                   <Badge variant="neutral">{invitation.status.toLowerCase()}</Badge>
                   {invitation.status === "PENDING" && (
-                    <span className="text-xs text-[#52525B]">Expires {formatDate(invitation.expiresAt)}</span>
+                    <span className="text-xs text-ink-secondary">Expires {formatDate(invitation.expiresAt)}</span>
                   )}
                 </div>
               </div>

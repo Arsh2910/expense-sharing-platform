@@ -48,12 +48,12 @@ export function ExpenseDetailsSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between pb-1 border-b border-[#E7E5E0]">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-[#71717A]">
+      <div className="flex items-center justify-between pb-1 border-b border-border-subtle">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
           1. Expense Details
         </h4>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-[#71717A]">Group Currency:</span>
+          <span className="text-xs text-ink-muted">Group Currency:</span>
           <Badge variant="outline" className="font-mono font-bold">
             {currency}
           </Badge>
@@ -72,7 +72,7 @@ export function ExpenseDetailsSection({
               id="expense-description"
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
-              placeholder="e.g. Dinner at Mario's, Taxi to airport, Groceries"
+              placeholder="e.g. Dinner…"
               disabled={disabled}
               maxLength={500}
             />
@@ -86,9 +86,9 @@ export function ExpenseDetailsSection({
               value={category}
               onChange={(e) => onCategoryChange(e.target.value)}
               disabled={disabled}
-              className="h-10 w-full rounded-xl border border-[#E7E5E0] bg-white px-3 py-2 text-sm text-[#18181B] shadow-xs outline-none transition-colors focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-10 w-full rounded-xl border border-border-subtle bg-surface px-3 py-2 text-sm text-ink shadow-xs outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="">Select a category...</option>
+              <option value="">Select a category…</option>
               {EXPENSE_CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
                   {cat.label}
@@ -124,14 +124,14 @@ export function ExpenseDetailsSection({
             error={assertedTotalError}
           >
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#71717A]">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
                 {currency}
               </span>
               <Input
                 id="expense-optional-total"
                 value={assertedTotal}
                 onChange={(e) => onAssertedTotalChange(e.target.value)}
-                placeholder="Leave blank to calculate from payers"
+                placeholder="Optional amount…"
                 className="pl-12 font-mono"
                 disabled={disabled}
               />

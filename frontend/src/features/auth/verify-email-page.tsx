@@ -74,7 +74,7 @@ export function VerifyEmailPage() {
         subtitle="Your email address has been confirmed."
       >
         <div className="space-y-5">
-          <div className="flex items-start gap-3.5 rounded-lg border border-teal-200 bg-teal-50/70 p-4 text-[#115E59]">
+          <div className="flex items-start gap-3.5 rounded-lg border border-teal-200 bg-teal-50/70 p-4 text-accent">
             <CheckCircle2
               className="mt-0.5 h-5 w-5 shrink-0"
               aria-hidden="true"
@@ -119,7 +119,7 @@ export function VerifyEmailPage() {
             Return to{" "}
             <Link
               to="/settings"
-              className="font-medium text-[#0F766E] hover:text-[#0D5E57] underline underline-offset-4"
+              className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
             >
               Account Settings
             </Link>
@@ -129,7 +129,7 @@ export function VerifyEmailPage() {
             Back to{" "}
             <Link
               to="/login"
-              className="font-medium text-[#0F766E] hover:text-[#0D5E57] underline underline-offset-4"
+              className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
             >
               Sign in
             </Link>
@@ -139,9 +139,9 @@ export function VerifyEmailPage() {
     >
       <div className="space-y-4">
         {verifyMutation.isPending && urlToken && (
-          <div className="flex items-center gap-3 rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] px-4 py-3 text-sm text-[#3F3F46]">
+          <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-subtle px-4 py-3 text-sm text-ink-secondary">
             <Loader2
-              className="h-4 w-4 animate-spin text-[#0F766E]"
+              className="h-4 w-4 animate-spin text-accent"
               aria-hidden="true"
             />
             <span>Verifying your email token...</span>

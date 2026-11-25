@@ -27,8 +27,8 @@ export function Avatar({
         "inline-flex shrink-0 items-center justify-center rounded-lg font-semibold tracking-tight select-none",
         SIZE_CLASSES[size],
         tone === "accent"
-          ? "border border-teal-200 bg-teal-50 text-[#0F766E]"
-          : "border border-[#E7E5E0] bg-[#F4F3EF] text-[#3F3F46]",
+          ? "border border-teal-200 bg-teal-50 text-accent"
+          : "border border-border-subtle bg-surface-subtle text-ink-secondary",
         className,
       )}
     >

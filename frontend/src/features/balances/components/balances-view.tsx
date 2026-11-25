@@ -75,18 +75,18 @@ export function BalancesView({
       {/* 1. Current user net position highlight card */}
       {currentUserBalance ? (
         <Card
-          className={`border overflow-hidden transition-all ${
+          className={`overflow-hidden border border-l-4 ${
             currentUserBalance.direction === "RECEIVES"
               ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
               : currentUserBalance.direction === "OWES"
                 ? "bg-amber-50/70 border-amber-200 text-amber-950"
-                : "bg-[#FAF8F5] border-[#E7E5E0] text-[#18181B]"
+                : "bg-surface-subtle border-border-subtle text-ink"
           }`}
         >
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 opacity-80">
-                <Scale className="h-4 w-4" />
+                <Scale className="h-4 w-4" aria-hidden="true" />
                 Your Net Position
               </span>
               <Badge
@@ -95,7 +95,7 @@ export function BalancesView({
                     ? "bg-emerald-200 text-emerald-900 border-emerald-300"
                     : currentUserBalance.direction === "OWES"
                       ? "bg-amber-200 text-amber-900 border-amber-300"
-                      : "bg-[#E7E5E0] text-[#52525B] border-[#D6D3CD]"
+                      : "bg-border-subtle text-ink-secondary border-border-strong"
                 }`}
               >
                 {currentUserBalance.direction === "RECEIVES" && "You are owed"}
@@ -114,7 +114,7 @@ export function BalancesView({
                   <ArrowUpRight className="h-6 w-6 text-amber-600 shrink-0" />
                 )}
                 {currentUserBalance.direction === "SQUARE" && (
-                  <CheckCircle2 className="h-6 w-6 text-[#0F766E] shrink-0" />
+                  <CheckCircle2 className="h-6 w-6 text-accent shrink-0" />
                 )}
                 <span className="text-3xl font-extrabold tabular-nums tracking-tight">
                   {currentUserBalance.direction === "RECEIVES" && "+"}
@@ -140,26 +140,26 @@ export function BalancesView({
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-[#E7E5E0] bg-[#FAF8F5] p-4 text-xs text-[#71717A]">
+        <Card className="border-border-subtle bg-surface-subtle p-4 text-xs text-ink-muted">
           <p>You have not participated in expenses yet in this group.</p>
         </Card>
       )}
 
       {/* 2. Sign Convention Explanation */}
-      <div className="flex items-start gap-2.5 p-3 rounded-xl border border-[#E7E5E0] bg-[#FAF8F5]/60 text-xs text-[#52525B]">
-        <Info className="h-4 w-4 shrink-0 text-[#0F766E] mt-0.5" />
+      <div className="flex items-start gap-2.5 p-3 rounded-xl border border-border-subtle bg-surface-subtle/60 text-xs text-ink-secondary">
+        <Info className="h-4 w-4 shrink-0 text-accent mt-0.5" />
         <p className="leading-relaxed">
           <strong>Sign Convention:</strong> Positive balances (+) represent money the group owes to that member. Negative balances (−) represent money that member owes to the group. A balance of zero means settled up.
         </p>
       </div>
 
       {/* 3. Active Members Balances Table */}
-      <Card className="border-[#E7E5E0]">
-        <CardHeader className="pb-3 border-b border-[#F4F3EF]">
+      <Card className="border-border-subtle">
+        <CardHeader className="pb-3 border-b border-surface-subtle">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[#18181B]">
-                <Users className="h-4 w-4 text-[#0F766E]" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-ink">
+                <Users className="h-4 w-4 text-accent" />
                 Group Member Balances
               </CardTitle>
               <CardDescription className="text-xs">
@@ -180,14 +180,14 @@ export function BalancesView({
           </div>
         </CardHeader>
         <CardContent className="pt-0 p-0">
-          <ul className="divide-y divide-[#F4F3EF]">
+          <ul className="divide-y divide-surface-subtle">
             {activeMembers.map((member: GroupBalanceMember) => {
               const isCurrentUser = member.userId === user?.id;
 
               return (
                 <li
                   key={member.userId}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-[#FAF8F5]/40 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-surface-subtle/40 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar
@@ -196,7 +196,7 @@ export function BalancesView({
                     />
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#18181B] truncate">
+                        <span className="text-sm font-medium text-ink truncate">
                           {member.displayName}
                         </span>
                         {isCurrentUser && (
@@ -206,7 +206,7 @@ export function BalancesView({
                         )}
                         {member.role && <RoleBadge role={member.role} />}
                       </div>
-                      <p className="text-xs text-[#71717A] truncate">
+                      <p className="text-xs text-ink-muted truncate">
                         {member.username ? `@${member.username}` : "Member"}
                       </p>
                     </div>
@@ -220,7 +220,7 @@ export function BalancesView({
                             ? "text-emerald-700"
                             : member.direction === "OWES"
                               ? "text-amber-800"
-                              : "text-[#52525B]"
+                              : "text-ink-secondary"
                         }`}
                       >
                         {member.direction === "RECEIVES" && "+"}
@@ -232,7 +232,7 @@ export function BalancesView({
                           currency,
                         )}
                       </p>
-                      <p className="text-[11px] font-medium text-[#71717A]">
+                      <p className="text-[11px] font-medium text-ink-muted">
                         {member.direction === "RECEIVES" && "is owed"}
                         {member.direction === "OWES" && "owes"}
                         {member.direction === "SQUARE" && "settled"}
@@ -244,7 +244,7 @@ export function BalancesView({
                         variant="outline"
                         size="sm"
                         onClick={() => onRecordSettlement(member.userId)}
-                        className="h-8 px-2.5 text-xs text-[#0F766E] hover:text-[#0D5E57] hover:bg-teal-50 hover:border-teal-300"
+                        className="h-8 px-2.5 text-xs text-accent hover:text-accent-hover hover:bg-teal-50 hover:border-teal-300"
                       >
                         Settle
                       </Button>
@@ -259,10 +259,10 @@ export function BalancesView({
 
       {/* 4. Former Members Historical Balances (if any) */}
       {formerMembers.length > 0 && (
-        <Card className="border-[#E7E5E0] bg-[#FAF8F5]/50">
-          <CardHeader className="pb-3 border-b border-[#E7E5E0]">
-            <CardTitle className="text-xs font-semibold text-[#52525B] uppercase tracking-wider flex items-center gap-2">
-              <User className="h-4 w-4 text-[#71717A]" />
+        <Card className="border-border-subtle bg-surface-subtle/50">
+          <CardHeader className="pb-3 border-b border-border-subtle">
+            <CardTitle className="text-xs font-semibold text-ink-secondary uppercase tracking-wider flex items-center gap-2">
+              <User className="h-4 w-4 text-ink-muted" />
               Former Members (Historical Balances)
             </CardTitle>
             <CardDescription className="text-xs">
@@ -270,7 +270,7 @@ export function BalancesView({
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0 p-0">
-            <ul className="divide-y divide-[#E7E5E0]">
+            <ul className="divide-y divide-border-subtle">
               {formerMembers.map((member: GroupBalanceMember) => (
                 <li
                   key={member.userId}
@@ -280,17 +280,17 @@ export function BalancesView({
                     <Avatar name={member.displayName} size="sm" tone="neutral" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-[#52525B] truncate">
+                        <span className="font-medium text-ink-secondary truncate">
                           {member.displayName}
                         </span>
                         <Badge
                           variant="outline"
-                          className="text-[10px] bg-[#E7E5E0]/60 text-[#52525B]"
+                          className="text-[10px] bg-border-subtle/60 text-ink-secondary"
                         >
                           Former Member
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-[#A1A1AA] truncate">
+                      <p className="text-[11px] text-ink-muted truncate">
                         {member.username ? `@${member.username}` : "Left group"}
                       </p>
                     </div>
@@ -303,7 +303,7 @@ export function BalancesView({
                           ? "text-emerald-700"
                           : member.direction === "OWES"
                             ? "text-amber-800"
-                            : "text-[#71717A]"
+                            : "text-ink-muted"
                       }`}
                     >
                       {member.direction === "RECEIVES" && "+"}
@@ -315,7 +315,7 @@ export function BalancesView({
                         currency,
                       )}
                     </span>
-                    <p className="text-[10px] text-[#A1A1AA]">
+                    <p className="text-[10px] text-ink-muted">
                       {member.direction === "RECEIVES" && "is owed"}
                       {member.direction === "OWES" && "owes"}
                       {member.direction === "SQUARE" && "settled"}

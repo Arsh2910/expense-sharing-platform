@@ -20,7 +20,7 @@ export function ActivityPage() {
       />
 
       {groupsQuery.isPending ? (
-        <p role="status" className="text-sm text-[#52525B]">Loading your groups…</p>
+        <p role="status" className="text-sm text-ink-secondary">Loading your groups…</p>
       ) : groupsQuery.isError ? (
         <Alert variant="error" title="Could not load your groups">
           <div className="flex flex-wrap items-center gap-3">
@@ -38,23 +38,23 @@ export function ActivityPage() {
           action={<Button asChild variant="outline"><Link to="/groups">Go to My Groups</Link></Button>}
         />
       ) : (
-        <Card>
-          <ul aria-label="Group activity" className="divide-y divide-[#E7E5E0]">
+        <Card className="overflow-hidden">
+          <ul aria-label="Group activity" className="divide-y divide-border-subtle">
             {groups.map((group) => (
               <li key={group.id}>
                 <Link
                   to={`/groups/${group.id}?tab=activity`}
                   aria-label={`View activity for ${group.name}`}
-                  className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-[#FAF9F6] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0F766E] sm:px-5"
+                  className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus sm:px-5"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] text-[#0F766E]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-panel text-action">
                     <Users className="h-4 w-4" aria-hidden="true" />
                   </span>
-                  <span className="min-w-0 flex-1 break-words text-sm font-semibold text-[#18181B] group-hover:text-[#0F766E]">
+                  <span className="min-w-0 flex-1 break-words text-sm font-semibold text-ink group-hover:text-accent">
                     {group.name}
                   </span>
-                  <span className="shrink-0 text-xs text-[#52525B]">{group.currency}</span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-[#52525B] group-hover:text-[#0F766E]" aria-hidden="true" />
+                  <span className="shrink-0 text-xs text-ink-secondary">{group.currency}</span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-ink-secondary group-hover:text-accent" aria-hidden="true" />
                 </Link>
               </li>
             ))}

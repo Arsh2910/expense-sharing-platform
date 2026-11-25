@@ -66,7 +66,7 @@ export function ExpenseRevisionsDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-[#0F766E]" />
+            <History className="h-5 w-5 text-accent" />
             Audit History: {expense?.description ?? "Expense"}
           </DialogTitle>
           <DialogDescription>
@@ -83,7 +83,7 @@ export function ExpenseRevisionsDialog({
           )}
 
           {!isLoading && (!revisions || revisions.length === 0) && (
-            <div className="text-center py-8 text-sm text-[#71717A]">
+            <div className="text-center py-8 text-sm text-ink-muted">
               No revision history found for this expense.
             </div>
           )}
@@ -104,8 +104,8 @@ export function ExpenseRevisionsDialog({
                     key={rev.revision}
                     className={`border ${
                       isCurrent
-                        ? "border-[#0F766E]/40 bg-[#FAF8F5]/60"
-                        : "border-[#E7E5E0] bg-white"
+                        ? "border-accent/40 bg-surface-subtle/60"
+                        : "border-border-subtle bg-surface"
                     }`}
                   >
                     <CardHeader className="pb-2.5">
@@ -130,49 +130,49 @@ export function ExpenseRevisionsDialog({
                             </Badge>
                           )}
                           {isCurrent && (
-                            <span className="text-[11px] font-semibold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                            <span className="text-[11px] font-semibold text-accent bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
                               Current Active Version
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-[#71717A]">
+                        <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock className="h-3.5 w-3.5" />
                           <span>{formatDateTime(rev.createdAt)}</span>
                         </div>
                       </div>
-                      <CardDescription className="text-xs pt-1 flex items-center gap-1 text-[#52525B]">
-                        <User className="h-3 w-3 text-[#71717A]" />
+                      <CardDescription className="text-xs pt-1 flex items-center gap-1 text-ink-secondary">
+                        <User className="h-3 w-3 text-ink-muted" />
                         <span>Action by: <strong>{authorName}</strong></span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0 text-xs space-y-2">
-                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-[#F4F3EF]/60 border border-[#E7E5E0]">
+                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-surface-subtle/60 border border-border-subtle">
                         <div>
-                          <p className="text-[11px] text-[#71717A] flex items-center gap-1">
+                          <p className="text-[11px] text-ink-muted flex items-center gap-1">
                             <Receipt className="h-3 w-3" />
                             Total Amount
                           </p>
-                          <p className="font-semibold text-sm text-[#18181B]">
+                          <p className="font-semibold text-sm text-ink">
                             {formatMoneyDisplay(snapshotAmountMinor, currency)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] text-[#71717A] flex items-center gap-1">
+                          <p className="text-[11px] text-ink-muted flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             Expense Date
                           </p>
-                          <p className="font-medium text-[#18181B]">
+                          <p className="font-medium text-ink">
                             {rev.snapshot.expenseDate}
                           </p>
                         </div>
                       </div>
 
                       <div className="space-y-1">
-                        <p className="text-[11px] font-medium text-[#52525B] flex items-center gap-1">
+                        <p className="text-[11px] font-medium text-ink-secondary flex items-center gap-1">
                           <Layers className="h-3 w-3" />
                           Split: <span className="font-semibold uppercase">{rev.snapshot.splitType}</span>
                         </p>
-                        <div className="text-[11px] text-[#71717A]">
+                        <div className="text-[11px] text-ink-muted">
                           Payers:{" "}
                           {rev.snapshot.payers
                             .map((p) => {
@@ -183,7 +183,7 @@ export function ExpenseRevisionsDialog({
                             })
                             .join(", ")}
                         </div>
-                        <div className="text-[11px] text-[#71717A]">
+                        <div className="text-[11px] text-ink-muted">
                           Participants ({rev.snapshot.splits.length}):{" "}
                           {rev.snapshot.splits
                             .map((s) => getMemberName(s.userId))

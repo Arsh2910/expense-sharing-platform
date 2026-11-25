@@ -21,15 +21,15 @@ const VARIANT_ICON = {
 } as const;
 
 const VARIANT_STYLE = {
-  success: "border-teal-200 bg-white text-[#18181B]",
-  error: "border-red-200 bg-white text-[#18181B]",
-  info: "border-[#E7E5E0] bg-white text-[#18181B]",
+  success: "border-teal-200 bg-surface text-ink",
+  error: "border-red-200 bg-surface text-ink",
+  info: "border-border-subtle bg-surface text-ink",
 } as const;
 
 const ICON_COLOR = {
-  success: "text-[#0F766E]",
+  success: "text-accent",
   error: "text-red-600",
-  info: "text-[#52525B]",
+  info: "text-ink-secondary",
 } as const;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -78,7 +78,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 if (!open) removeToast(item.id);
               }}
               className={cn(
-                "pointer-events-auto flex w-full items-start gap-3 rounded-xl border p-4 shadow-md transition-all",
+                "pointer-events-auto flex w-full items-start gap-3 rounded-xl border p-4 shadow-md transition-transform motion-reduce:transition-none",
                 VARIANT_STYLE[item.variant],
               )}
             >
@@ -87,25 +87,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1 space-y-0.5">
-                <ToastPrimitive.Title className="text-sm font-medium text-[#18181B]">
+                <ToastPrimitive.Title className="text-sm font-medium text-ink">
                   {item.title}
                 </ToastPrimitive.Title>
                 {item.description && (
-                  <ToastPrimitive.Description className="text-xs text-[#52525B] leading-relaxed">
+                  <ToastPrimitive.Description className="text-xs text-ink-secondary leading-relaxed">
                     {item.description}
                   </ToastPrimitive.Description>
                 )}
               </div>
               <ToastPrimitive.Close
                 aria-label="Dismiss notification"
-                className="rounded-md p-1 text-[#71717A] transition-colors hover:bg-[#F4F3EF] hover:text-[#18181B]"
+                className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
               </ToastPrimitive.Close>
             </ToastPrimitive.Root>
           );
         })}
-        <ToastPrimitive.Viewport className="fixed right-4 bottom-4 z-[100] flex w-full max-w-sm flex-col gap-2 outline-none" />
+        <ToastPrimitive.Viewport className="fixed right-4 bottom-4 z-[100] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2 outline-none" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   );

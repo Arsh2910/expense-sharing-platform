@@ -251,7 +251,7 @@ function RecordSettlementForm({
         <div className="space-y-1.5">
           <label
             htmlFor="settlement-from-user"
-            className="block text-xs font-semibold text-[#18181B]"
+            className="block text-xs font-semibold text-ink"
           >
             Payer (Who Paid)
           </label>
@@ -260,7 +260,7 @@ function RecordSettlementForm({
             value={fromUserId}
             onChange={(e) => setFromUserId(e.target.value)}
             disabled={createMutation.isPending}
-            className="h-10 w-full rounded-xl border border-[#E7E5E0] bg-white px-3 py-2 text-sm text-[#18181B] shadow-xs outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 w-full rounded-xl border border-border-subtle bg-surface px-3 py-2 text-sm text-ink shadow-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {members.map((m) => {
               const bal = balanceMap.get(m.user.id);
@@ -285,7 +285,7 @@ function RecordSettlementForm({
             })}
           </select>
           {payerBalance && (
-            <p className="text-[11px] text-[#71717A] flex items-center gap-1 pt-0.5">
+            <p className="text-[11px] text-ink-muted flex items-center gap-1 pt-0.5">
               <Scale className="h-3 w-3" />
               Current balance:{" "}
               <strong
@@ -294,7 +294,7 @@ function RecordSettlementForm({
                     ? "text-emerald-700"
                     : payerBalance.direction === "OWES"
                       ? "text-amber-800"
-                      : "text-[#52525B]"
+                      : "text-ink-secondary"
                 }
               >
                 {payerBalance.direction === "RECEIVES" && "+"}
@@ -314,7 +314,7 @@ function RecordSettlementForm({
         <div className="space-y-1.5">
           <label
             htmlFor="settlement-to-user"
-            className="block text-xs font-semibold text-[#18181B]"
+            className="block text-xs font-semibold text-ink"
           >
             Recipient (Who Received)
           </label>
@@ -323,7 +323,7 @@ function RecordSettlementForm({
             value={toUserId}
             onChange={(e) => setToUserId(e.target.value)}
             disabled={createMutation.isPending}
-            className="h-10 w-full rounded-xl border border-[#E7E5E0] bg-white px-3 py-2 text-sm text-[#18181B] shadow-xs outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 w-full rounded-xl border border-border-subtle bg-surface px-3 py-2 text-sm text-ink shadow-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {members.map((m) => {
               const isPayer = m.user.id === fromUserId;
@@ -350,7 +350,7 @@ function RecordSettlementForm({
             })}
           </select>
           {recipientBalance && (
-            <p className="text-[11px] text-[#71717A] flex items-center gap-1 pt-0.5">
+            <p className="text-[11px] text-ink-muted flex items-center gap-1 pt-0.5">
               <Scale className="h-3 w-3" />
               Current balance:{" "}
               <strong
@@ -359,7 +359,7 @@ function RecordSettlementForm({
                     ? "text-emerald-700"
                     : recipientBalance.direction === "OWES"
                       ? "text-amber-800"
-                      : "text-[#52525B]"
+                      : "text-ink-secondary"
                 }
               >
                 {recipientBalance.direction === "RECEIVES" && "+"}
@@ -382,12 +382,12 @@ function RecordSettlementForm({
         <div className="space-y-1.5">
           <label
             htmlFor="settlement-amount"
-            className="block text-xs font-semibold text-[#18181B]"
+            className="block text-xs font-semibold text-ink"
           >
             Amount ({currency})
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#71717A]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
               {currency}
             </span>
             <Input
@@ -406,7 +406,7 @@ function RecordSettlementForm({
         <div className="space-y-1.5">
           <label
             htmlFor="settlement-date"
-            className="block text-xs font-semibold text-[#18181B]"
+            className="block text-xs font-semibold text-ink"
           >
             Settled On
           </label>
@@ -428,7 +428,7 @@ function RecordSettlementForm({
       <div className="space-y-1.5">
         <label
           htmlFor="settlement-note"
-          className="block text-xs font-semibold text-[#18181B]"
+          className="block text-xs font-semibold text-ink"
         >
           Note (Optional)
         </label>
@@ -459,9 +459,9 @@ function RecordSettlementForm({
         </div>
       )}
 
-      <div className="rounded-xl border border-[#E7E5E0] bg-[#FAF8F5]/80 p-3.5 text-xs text-[#52525B] space-y-1.5">
-        <div className="flex items-center gap-1.5 font-semibold text-[#18181B]">
-          <Info className="h-4 w-4 text-[#0F766E] shrink-0" />
+      <div className="rounded-xl border border-border-subtle bg-surface-subtle/80 p-3.5 text-xs text-ink-secondary space-y-1.5">
+        <div className="flex items-center gap-1.5 font-semibold text-ink">
+          <Info className="h-4 w-4 text-accent shrink-0" />
           <span>Settlement Preview & Overpayments</span>
         </div>
         <p className="leading-relaxed">
@@ -479,7 +479,7 @@ function RecordSettlementForm({
         </p>
       )}
 
-      <DialogFooter className="pt-2 border-t border-[#E7E5E0]">
+      <DialogFooter className="pt-2 border-t border-border-subtle">
         <Button
           type="button"
           variant="outline"
@@ -516,7 +516,7 @@ export function RecordSettlementDialog({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-[#0F766E]" />
+            <Send className="h-5 w-5 text-accent" />
             Record Member Settlement
           </DialogTitle>
           <DialogDescription>

@@ -1,4 +1,4 @@
-# ClearLedger
+# SplitCircle
 
 A full-stack expense-sharing application for friends, roommates, families, and travel groups. Create a group, invite people, record expenses, see net balances, and record settlements without losing the financial history behind them.
 
@@ -112,7 +112,7 @@ Copy `.env.example` and fill in the values. Never commit `.env` files or real ke
 | `CORS_ALLOWED_ORIGINS` | API | Comma-separated browser origin allowlist |
 | `PASSWORD_RESET_OUTBOX_KEY` | API and worker | Shared 32-byte hex key that encrypts queued email tokens |
 | `RESEND_API_KEY` | Worker | Resend API credential |
-| `RESEND_FROM_EMAIL` | Worker | Verified sender, for example `ClearLedger <noreply@mail.example.com>` |
+| `RESEND_FROM_EMAIL` | Worker | Verified sender, for example `SplitCircle <noreply@mail.example.com>` |
 
 In production, `PASSWORD_RESET_OUTBOX_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` must be configured on the worker as well as the API where applicable. The API and worker must share the same database, Redis instance, frontend URL, and outbox encryption key.
 

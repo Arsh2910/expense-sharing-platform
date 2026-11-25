@@ -11,7 +11,6 @@ import {
   Utensils,
   Zap,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,16 +117,16 @@ export function ExpenseList({
 
   if (expenses.length === 0) {
     return (
-      <Card className="border-dashed border-[#D6D3CD] bg-[#FAF8F5]/40 text-center py-12 px-4">
+      <Card className="border-dashed border-border-strong bg-surface-subtle/40 text-center py-12 px-4">
         <CardContent className="space-y-4 max-w-md mx-auto pt-0">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-[#0F766E]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-accent">
             <Receipt className="h-6 w-6" />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-semibold text-[#18181B]">
+            <h3 className="text-base font-semibold text-ink">
               No expenses recorded yet
             </h3>
-            <p className="text-xs text-[#71717A] leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               {isArchived
                 ? "This group is archived and has no historical expenses."
                 : `Record shared expenses in ${currency} and distribute costs fairly among group members.`}
@@ -148,19 +147,13 @@ export function ExpenseList({
     <div className="space-y-4">
       {/* Header bar */}
       <div className="flex items-center justify-between pb-1">
-        <p className="text-xs font-medium text-[#71717A]">
+        <p className="text-xs font-medium text-ink-muted">
           Showing {expenses.length} expense{expenses.length === 1 ? "" : "s"}
         </p>
-        {!isArchived && (
-          <Button size="sm" onClick={onAddExpense} className="gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
-            Add expense
-          </Button>
-        )}
       </div>
 
       {/* Expense List */}
-      <div className="space-y-2.5">
+      <ul className="rounded-xl border border-border-subtle bg-surface divide-y divide-border-subtle">
         {expenses.map((expense) => {
           const Icon = getCategoryIcon(expense.category);
 
@@ -173,69 +166,33 @@ export function ExpenseList({
             payerSummary = `Paid by ${expense.payers.length} members`;
           }
 
-          const creatorName = getMemberName(expense.createdById);
-
           return (
-            <div
-              key={expense.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectExpense(expense)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelectExpense(expense);
-                }
-              }}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-[#E7E5E0] bg-white hover:border-[#0F766E]/50 hover:shadow-xs transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#0F766E]"
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="h-10 w-10 shrink-0 rounded-lg bg-[#FAF8F5] border border-[#E7E5E0] flex items-center justify-center text-[#0F766E] group-hover:bg-teal-50 transition-colors">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="text-sm font-semibold text-[#18181B] truncate group-hover:text-[#0F766E] transition-colors">
-                      {expense.description}
-                    </p>
-                    {expense.category && (
-                      <Badge variant="outline" className="text-[10px] bg-[#FAF8F5]">
-                        {expense.category}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-[10px] font-mono">
-                      v{expense.version}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-2 text-xs text-[#71717A]">
-                    <span>{formatDate(expense.expenseDate)}</span>
-                    <span>•</span>
-                    <span>{payerSummary}</span>
-                    <span>•</span>
-                    <span className="font-medium text-[#52525B]">
-                      {expense.splits.length} participant{expense.splits.length === 1 ? "" : "s"}
-                    </span>
-                    <span>•</span>
-                    <span className="text-[#A1A1AA]">Created by {creatorName}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-center shrink-0">
-                <div className="text-right">
-                  <p className="text-sm sm:text-base font-bold text-[#18181B] tabular-nums">
-                    {formatMoneyDisplay(expense.totalMinor, currency)}
-                  </p>
-                  <p className="text-[11px] font-medium text-[#0F766E]">
-                    {expense.splitType.toLowerCase()} split
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-[#A1A1AA] group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all" />
-              </div>
-            </div>
+            <li key={expense.id}>
+              <button
+                type="button"
+                onClick={() => onSelectExpense(expense)}
+                className="group grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_fit-content(45%)_auto] items-start gap-x-2 gap-y-1 rounded-lg px-3 py-3.5 text-left transition-colors hover:bg-surface-subtle focus-visible:-outline-offset-2 sm:gap-x-3 sm:px-4"
+              >
+                <span className="row-span-2 grid size-8 place-items-center rounded-md bg-surface-subtle text-accent sm:size-9">
+                  <Icon className="size-4" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 break-words text-sm font-semibold text-ink group-hover:text-accent">
+                  {expense.description}
+                </span>
+                <span className="text-right text-sm font-semibold text-ink tabular-nums [overflow-wrap:anywhere]">
+                  {formatMoneyDisplay(expense.totalMinor, currency)}
+                </span>
+                <ChevronRight className="mt-0.5 size-4 text-ink-muted group-hover:text-accent" aria-hidden="true" />
+                <span className="col-span-3 col-start-2 flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+                  <span className="break-words">{payerSummary}</span>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={expense.expenseDate}>{formatDate(expense.expenseDate)}</time>
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {/* Pagination Load More */}
       {hasNextPage && (

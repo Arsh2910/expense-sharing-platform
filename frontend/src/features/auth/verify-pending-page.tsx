@@ -15,13 +15,13 @@ export function VerifyPendingPage() {
   return (
     <AuthLayout
       title="Verify your email address"
-      subtitle="Email verification is required before signing in to your ClearLedger account."
+      subtitle="Email verification is required before signing in to your SplitCircle account."
       footer={
         <>
           Already verified?{" "}
           <Link
             to="/login"
-            className="font-medium text-[#0F766E] hover:text-[#0D5E57] underline underline-offset-4"
+            className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
           >
             Sign in
           </Link>
@@ -29,12 +29,12 @@ export function VerifyPendingPage() {
       }
     >
       <div className="space-y-5">
-        <div className="flex items-start gap-3.5 rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] p-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-[#0F766E]">
+        <div className="flex items-start gap-3.5 rounded-lg border border-border-subtle bg-surface-subtle p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-accent">
             <MailCheck className="h-4.5 w-4.5" aria-hidden="true" />
           </div>
           <div className="space-y-1 text-sm">
-            <p className="font-medium text-[#18181B]">
+            <p className="font-medium text-ink">
               {state?.email ? (
                 <>
                   Verification sent to{" "}
@@ -44,7 +44,7 @@ export function VerifyPendingPage() {
                 "Check your inbox for a verification link"
               )}
             </p>
-            <p className="text-[#52525B] leading-relaxed">
+            <p className="text-ink-secondary leading-relaxed">
               Open the verification link from your email, or paste the
               verification token directly on the verification page. Tokens
               remain valid for 24 hours.

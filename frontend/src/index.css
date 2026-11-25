@@ -3,10 +3,19 @@
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --color-canvas: #FAF9F6;
+  --color-canvas: #f5f5ef;
   --color-surface: #FFFFFF;
   --color-surface-subtle: #F4F3EF;
-  --color-ink: #18181B;
+  --color-ink: #182b25;
+  --color-panel: #edf2e9;
+  --color-action: #165745;
+  --color-action-hover: #104536;
+  --color-on-action: #ffffff;
+  --color-chrome: #f9fbf7;
+  --color-inverted: #18181b;
+  --color-focus: #0f766e;
+  --color-scrim: #121b18;
+  --color-field-border: #829389;
   --color-ink-secondary: #52525B;
   --color-ink-muted: #71717A;
   --color-border-subtle: #E7E5E0;
@@ -18,6 +27,80 @@
   --color-accent-tint: #F0FDFA;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #141816;
+  --color-surface: #1e2421;
+  --color-surface-subtle: #29312d;
+  --color-panel: #24362f;
+  --color-chrome: #191e1b;
+  --color-ink: #edf3ee;
+  --color-ink-secondary: #c0ccc4;
+  --color-ink-muted: #a2b1a7;
+  --color-border-subtle: #354039;
+  --color-border-strong: #65776b;
+  --color-field-border: #697e71;
+  --color-accent: #86d8b8;
+  --color-accent-hover: #ade8ce;
+  --color-accent-soft: #2b5142;
+  --color-accent-tint: #243e34;
+  --color-action: #93dec0;
+  --color-action-hover: #b3ecd4;
+  --color-on-action: #142920;
+  --color-focus: #93dec0;
+
+  --color-emerald-50: #203b2e;
+  --color-emerald-100: #284a39;
+  --color-emerald-200: #315542;
+  --color-emerald-300: #487460;
+  --color-emerald-600: #80cda5;
+  --color-emerald-700: #9fdfbd;
+  --color-emerald-800: #b3e6ca;
+  --color-emerald-900: #c1ebd4;
+  --color-emerald-950: #d7f1e2;
+  --color-teal-50: #203b33;
+  --color-teal-100: #294c40;
+  --color-teal-200: #3b6556;
+  --color-teal-300: #548273;
+  --color-teal-500: #68bd9c;
+  --color-teal-600: #82cdb0;
+  --color-teal-700: #9bdbbf;
+  --color-teal-800: #b0e5ce;
+  --color-teal-900: #cbefdf;
+  --color-amber-50: #382f20;
+  --color-amber-100: #443721;
+  --color-amber-200: #534227;
+  --color-amber-300: #735b37;
+  --color-amber-600: #ebbd75;
+  --color-amber-700: #f0c989;
+  --color-amber-800: #f6d69f;
+  --color-amber-900: #f9e2b8;
+  --color-amber-950: #fbe9cc;
+  --color-red-50: #39282a;
+  --color-red-100: #482e31;
+  --color-red-200: #5c393d;
+  --color-red-300: #845457;
+  --color-red-400: #c76d73;
+  --color-red-500: #e5898c;
+  --color-red-600: #efa0a2;
+  --color-red-700: #f4b2b3;
+  --color-red-800: #f6c2c3;
+  --color-red-900: #f9d2d2;
+  --color-rose-50: #3b282f;
+  --color-rose-100: #4a3039;
+  --color-rose-200: #633d48;
+  --color-rose-300: #875361;
+  --color-rose-700: #f5b2c2;
+  --color-rose-800: #f7c3cf;
+  --color-blue-50: #243446;
+  --color-blue-100: #2c4259;
+  --color-blue-200: #405978;
+  --color-blue-700: #aecff4;
+  --color-blue-800: #c2dcf7;
+  --color-blue-900: #d4e7fb;
+  --color-gray-300: #65776b;
+}
+
 @layer base {
   html {
     font-family: var(--font-sans);
@@ -25,9 +108,11 @@
     color: var(--color-ink);
   }
 
+  button, a { touch-action: manipulation; }
+
   /* Accessible keyboard focus indicator */
   :focus-visible {
-    outline: 2px solid #0F766E;
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 }

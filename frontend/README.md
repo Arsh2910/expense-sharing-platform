@@ -1,4 +1,4 @@
-# ClearLedger Frontend
+# SplitCircle Frontend
 
 Web client for the Expense Sharing Platform built with React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router, and React Hook Form + Zod.
 
@@ -26,4 +26,4 @@ Web client for the Expense Sharing Platform built with React, TypeScript, Vite, 
 - `npm run dev` — Start Vite dev server on `http://localhost:5173`
 - `npm run build` — Run `tsc -b` typechecking and production `vite build`
 - `npm run lint` — Run `oxlint`
-- `npm run preview` — Preview the production bundle locally
+- `npm run preview` — Serve the built frontend at `http://127.0.0.1:5183`. Keep the local API running on port 5000 and build with an empty `VITE_API_BASE_URL`.

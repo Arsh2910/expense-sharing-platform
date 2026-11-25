@@ -8,12 +8,12 @@ import { isApiError } from "@/lib/api/errors";
 
 function SessionLoadingScreen() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF9F6] px-4">
-      <div className="w-full max-w-sm space-y-6 rounded-xl border border-[#E7E5E0] bg-white p-7 shadow-xs">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-4">
+      <div className="w-full max-w-sm space-y-6 rounded-xl border border-border-subtle bg-surface p-7 shadow-xs">
         <div className="flex items-center gap-2.5">
           <BrandMark className="h-7 w-7" />
-          <span className="text-base font-semibold tracking-tight text-[#18181B]">
-            ClearLedger
+          <span className="text-base font-semibold tracking-tight text-ink">
+            SplitCircle
           </span>
         </div>
         <div className="space-y-3">
@@ -21,7 +21,7 @@ function SessionLoadingScreen() {
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-9 w-full" />
         </div>
-        <p className="text-xs text-[#71717A]">Verifying your session...</p>
+        <p className="text-xs text-ink-muted">Verifying your session...</p>
       </div>
     </div>
   );
@@ -35,16 +35,16 @@ function SessionErrorScreen({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF9F6] px-4">
-      <div className="w-full max-w-md space-y-4 rounded-xl border border-[#E7E5E0] bg-white p-7 shadow-xs">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-4">
+      <div className="w-full max-w-md space-y-4 rounded-xl border border-border-subtle bg-surface p-7 shadow-xs">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700">
           <WifiOff className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="space-y-1.5">
-          <h1 className="text-lg font-semibold text-[#18181B]">
+          <h1 className="text-lg font-semibold text-ink">
             Unable to connect to the server
           </h1>
-          <p className="text-sm text-[#52525B] leading-relaxed">{message}</p>
+          <p className="text-sm text-ink-secondary leading-relaxed">{message}</p>
         </div>
         <Button onClick={onRetry}>
           <RefreshCw className="h-4 w-4" aria-hidden="true" />

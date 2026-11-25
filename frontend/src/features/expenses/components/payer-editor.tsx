@@ -68,19 +68,19 @@ export function PayerEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between pb-1 border-b border-[#E7E5E0]">
+      <div className="flex items-center justify-between pb-1 border-b border-border-subtle">
         <div className="space-y-0.5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-[#71717A] flex items-center gap-1.5">
-            <Wallet className="h-3.5 w-3.5 text-[#0F766E]" />
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+            <Wallet className="h-3.5 w-3.5 text-accent" />
             2. Who Paid
           </h4>
-          <p className="text-[11px] text-[#71717A]">
+          <p className="text-[11px] text-ink-muted">
             Specify who covered this expense and how much each person paid.
           </p>
         </div>
-        <div className="text-right">
-          <span className="text-xs text-[#71717A]">Payer Total:</span>
-          <p className="text-sm font-semibold font-mono text-[#18181B] tabular-nums">
+        <div className="shrink-0 whitespace-nowrap text-right">
+          <span className="text-xs text-ink-muted">Payer Total:</span>
+          <p className="text-sm font-semibold font-mono text-ink tabular-nums">
             {formatMoneyDisplay(payerTotalMinor, currency)}
           </p>
         </div>
@@ -104,7 +104,7 @@ export function PayerEditor({
                     value={payer.userId}
                     onChange={(e) => handlePayerUserChange(index, e.target.value)}
                     disabled={disabled}
-                    className="h-10 w-full rounded-xl border border-[#E7E5E0] bg-white px-3 py-2 text-sm text-[#18181B] shadow-xs outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-10 w-full rounded-xl border border-border-subtle bg-surface px-3 py-2 text-sm text-ink shadow-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {members.map((member) => {
                       const isTaken =
@@ -126,7 +126,7 @@ export function PayerEditor({
                 </div>
 
                 <div className="w-36 sm:w-44 shrink-0 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#71717A]">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
                     {currency}
                   </span>
                   <Input
@@ -145,7 +145,7 @@ export function PayerEditor({
                     size="sm"
                     onClick={() => handleRemovePayerRow(index)}
                     disabled={disabled}
-                    className="h-10 w-10 p-0 text-[#71717A] hover:text-red-600 hover:bg-red-50 shrink-0"
+                    className="h-10 w-10 p-0 text-ink-muted hover:text-red-600 hover:bg-red-50 shrink-0"
                     aria-label={`Remove payer ${index + 1}`}
                   >
                     <Trash2 className="h-4 w-4" />

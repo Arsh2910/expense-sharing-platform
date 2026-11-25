@@ -561,7 +561,7 @@ function AddExpenseForm({
           reconciliationMessage={reconciliationMessage}
         />
 
-        <DialogFooter className="pt-2 border-t border-[#E7E5E0]">
+        <DialogFooter className="pt-2 border-t border-border-subtle">
           <Button
             type="button"
             variant="outline"
@@ -616,13 +616,13 @@ export function AddExpenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEdit ? (
-              <Pencil className="h-5 w-5 text-[#0F766E]" />
+              <Pencil className="h-5 w-5 text-accent" />
             ) : (
-              <Plus className="h-5 w-5 text-[#0F766E]" />
+              <Plus className="h-5 w-5 text-accent" />
             )}
             {isEdit
               ? `Edit Expense (v${initialExpense?.version})`

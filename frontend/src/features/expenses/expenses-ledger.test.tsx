@@ -177,7 +177,7 @@ describe("Expense Ledger & Management Frontend Tests", () => {
       expect(onAdd).toHaveBeenCalled();
     });
 
-    it("renders expense cards with payer summary and handles cursor pagination", async () => {
+    it("renders expense rows with payer summary and handles cursor pagination", async () => {
       const listSpy = vi.spyOn(expensesApi, "listExpenses");
 
       // Page 1
@@ -215,10 +215,9 @@ describe("Expense Ledger & Management Frontend Tests", () => {
 
       // Verify page 1 item
       await waitFor(() => {
-        expect(screen.getByText("Team Dinner")).toBeDefined();
-        expect(screen.getByText("FOOD")).toBeDefined();
-        expect(screen.getByText("Paid by User One")).toBeDefined();
-        expect(screen.getByText("$60.00")).toBeDefined();
+        expect(screen.getByRole("button", {
+          name: /Team Dinner.*\$60\.00.*Paid by User One/,
+        })).toBeDefined();
       });
 
       // Click on load more button
@@ -236,7 +235,7 @@ describe("Expense Ledger & Management Frontend Tests", () => {
       });
 
       // Clicking an item calls onSelectExpense
-      fireEvent.click(screen.getByText("Team Dinner"));
+      fireEvent.click(screen.getByRole("button", { name: /Team Dinner/ }));
       expect(onSelect).toHaveBeenCalledWith(mockExpense);
     });
   });

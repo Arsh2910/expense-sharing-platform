@@ -243,14 +243,14 @@ export function AccountSettingsPage() {
         description="Manage your profile details, email address, password, and active session."
       />
 
-      <div className="space-y-6">
+      <div className="grid max-w-4xl gap-6">
         {/* Profile Information */}
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <UserIcon
-                  className="h-4.5 w-4.5 text-[#0F766E]"
+                  className="h-4.5 w-4.5 text-accent"
                   aria-hidden="true"
                 />
                 <CardTitle>Profile details</CardTitle>
@@ -260,7 +260,7 @@ export function AccountSettingsPage() {
                   <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                   {user.emailVerifiedAt ? "Verified account" : "Pending verification"}
                 </Badge>
-                <span className="text-xs text-[#71717A]">
+                <span className="text-xs text-ink-muted">
                   Joined {formatDate(user.createdAt)}
                 </span>
               </div>
@@ -303,7 +303,7 @@ export function AccountSettingsPage() {
                 <div className="relative">
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-[#71717A]"
+                    className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-ink-muted"
                   >
                     @
                   </span>
@@ -334,14 +334,14 @@ export function AccountSettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2.5">
               <Mail
-                className="h-4.5 w-4.5 text-[#0F766E]"
+                className="h-4.5 w-4.5 text-accent"
                 aria-hidden="true"
               />
               <CardTitle>Email address</CardTitle>
             </div>
             <CardDescription>
               Your primary sign-in email is{" "}
-              <span className="font-medium text-[#18181B]">{user.email}</span>.
+              <span className="font-medium text-ink">{user.email}</span>.
               Updating your email requires verification before it takes effect.
             </CardDescription>
           </CardHeader>
@@ -416,7 +416,7 @@ export function AccountSettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2.5">
               <KeyRound
-                className="h-4.5 w-4.5 text-[#0F766E]"
+                className="h-4.5 w-4.5 text-accent"
                 aria-hidden="true"
               />
               <CardTitle>Change password</CardTitle>
@@ -461,7 +461,7 @@ export function AccountSettingsPage() {
                     aria-label={
                       showPasswords ? "Hide passwords" : "Show passwords"
                     }
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-[#71717A] transition-colors hover:text-[#18181B]"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted transition-colors hover:text-ink"
                   >
                     {showPasswords ? (
                       <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -522,7 +522,7 @@ export function AccountSettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2.5">
               <Monitor
-                className="h-4.5 w-4.5 text-[#0F766E]"
+                className="h-4.5 w-4.5 text-accent"
                 aria-hidden="true"
               />
               <CardTitle>Session management</CardTitle>
@@ -532,15 +532,15 @@ export function AccountSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col gap-4 rounded-lg border border-[#E7E5E0] bg-[#FAF9F6] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-[#18181B]">
+                  <span className="text-sm font-medium text-ink">
                     Current browser session
                   </span>
                   <Badge variant="accent">Active</Badge>
                 </div>
-                <p className="text-xs text-[#52525B]">
+                <p className="text-xs text-ink-secondary">
                   Signed in as {user.email}
                 </p>
               </div>
@@ -569,7 +569,7 @@ export function AccountSettingsPage() {
               <CardTitle className="text-red-900">Deactivate account</CardTitle>
             </div>
             <CardDescription>
-              Permanently deactivate your ClearLedger account, revoke all
+              Permanently deactivate your SplitCircle account, revoke all
               sessions, and remove your personal profile details. Ownership of
               active multi-member groups transfers automatically to the longest
               standing eligible member; sole-member groups are archived.

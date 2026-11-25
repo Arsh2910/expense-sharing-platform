@@ -58,13 +58,13 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
           : focused ? "This invitation is no longer pending." : "You have no pending invitations."}</Alert>
       )}
       {invitations?.map((invitation) => (
-        <Card key={invitation.id}>
+        <Card key={invitation.id} className="border-l-4 border-l-[#a1bcaa]">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
             <div>
-              <h2 className="font-semibold">{invitation.group.name}</h2>
-              <p className="text-sm text-[#52525B]">Expires {formatDate(invitation.expiresAt)}</p>
+              <h2 className="break-words font-semibold text-ink">{invitation.group.name}</h2>
+              <p className="text-sm text-ink-secondary">Expires {formatDate(invitation.expiresAt)}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" disabled={response.isPending}
                 onClick={() => response.mutate({ invitation, action: "decline" })}>Decline</Button>
               <Button disabled={response.isPending}

@@ -75,12 +75,12 @@ export function PercentageSplitEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-[#71717A]">
+        <span className="font-medium text-ink-muted">
           Assign percentage shares ({participants.length} participant(s))
         </span>
         <div className="flex items-center gap-1.5 font-mono">
-          <span className="text-[#71717A]">Total:</span>
-          <span className="font-semibold text-[#18181B] tabular-nums">
+          <span className="text-ink-muted">Total:</span>
+          <span className="font-semibold text-ink tabular-nums">
             {formatPercentageUnits(totalPercentUnits)}%
           </span>
         </div>
@@ -94,7 +94,7 @@ export function PercentageSplitEditor({
       <div
         className={`rounded-xl border p-2.5 text-xs flex items-center justify-between transition-colors ${
           isReconciled
-            ? "border-teal-200 bg-teal-50/50 text-[#0F766E]"
+            ? "border-teal-200 bg-teal-50/50 text-accent"
             : remainingUnits > 0n
               ? "border-amber-200 bg-amber-50/50 text-amber-900"
               : "border-red-200 bg-red-50/50 text-red-900"
@@ -103,7 +103,7 @@ export function PercentageSplitEditor({
         <div className="flex items-center gap-1.5 font-medium">
           {isReconciled ? (
             <>
-              <CheckCircle2 className="h-4 w-4 text-[#0F766E]" />
+              <CheckCircle2 className="h-4 w-4 text-accent" />
               <span>Percentages total exactly 100.00%</span>
             </>
           ) : (
@@ -132,8 +132,8 @@ export function PercentageSplitEditor({
               key={member.user.id}
               className={`p-2.5 rounded-xl border transition-colors ${
                 isSelected
-                  ? "border-[#0F766E]/40 bg-[#0F766E]/5"
-                  : "border-[#E7E5E0] bg-white opacity-80"
+                  ? "border-accent/40 bg-accent-tint"
+                  : "border-border-subtle bg-surface opacity-80"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -143,15 +143,15 @@ export function PercentageSplitEditor({
                     checked={isSelected}
                     onChange={() => handleToggleParticipant(member.user.id)}
                     disabled={disabled}
-                    className="h-4 w-4 rounded text-[#0F766E] border-gray-300 focus:ring-[#0F766E]"
+                    className="h-4 w-4 rounded text-accent border-gray-300 focus:ring-accent"
                   />
                   <Avatar name={member.user.displayName} size="sm" tone="neutral" />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-[#18181B] truncate">
+                    <p className="text-xs font-semibold text-ink truncate">
                       {member.user.displayName}
                     </p>
                     {isSelected && calculatedShareMinor !== undefined && totalMinor > 0n && (
-                      <p className="text-[10px] font-mono text-[#0F766E] tabular-nums">
+                      <p className="text-[10px] font-mono text-accent tabular-nums">
                         ≈ {formatMoneyDisplay(calculatedShareMinor, currency)}
                       </p>
                     )}
@@ -169,10 +169,10 @@ export function PercentageSplitEditor({
                       className="pr-7 font-mono text-xs text-right h-8"
                       disabled={disabled}
                     />
-                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#71717A]" />
+                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
                   </div>
                 ) : (
-                  <span className="text-xs text-[#A1A1AA] italic">Excluded</span>
+                  <span className="text-xs text-ink-muted italic">Excluded</span>
                 )}
               </div>
 

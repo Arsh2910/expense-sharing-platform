@@ -15,7 +15,7 @@ export function NotFoundPage() {
             <Link to="/">Return to Overview</Link>
           </Button>
         }
-        className="w-full max-w-md bg-white"
+        className="w-full max-w-md bg-surface"
       />
     </div>
   );

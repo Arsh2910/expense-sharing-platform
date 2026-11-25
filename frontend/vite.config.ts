@@ -23,4 +23,8 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 5183,
+    strictPort: true,
+  },
 });

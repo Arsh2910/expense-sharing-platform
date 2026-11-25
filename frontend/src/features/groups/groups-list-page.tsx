@@ -49,7 +49,7 @@ export function GroupsListPage() {
       />
 
       {groupsQuery.isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index}>
               <CardContent className="p-6 space-y-4">
@@ -103,7 +103,7 @@ export function GroupsListPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
               <Search
-                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#71717A]"
+                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-muted"
                 aria-hidden="true"
               />
               <Input
@@ -115,7 +115,7 @@ export function GroupsListPage() {
                 className="pl-9"
               />
             </div>
-            <p className="text-xs text-[#71717A] tabular-nums">
+            <p className="text-xs text-ink-muted tabular-nums">
               Showing {filteredGroups.length} of {groups.length}{" "}
               {groups.length === 1 ? "group" : "groups"}
             </p>
@@ -133,20 +133,20 @@ export function GroupsListPage() {
               }
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredGroups.map((group) => {
                 const membership = group.memberships[0];
                 return (
                   <Link
                     key={group.id}
                     to={`/groups/${group.id}`}
-                    className="group block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F766E]"
+                    className="group block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >
-                    <Card className="h-full transition-all duration-150 group-hover:border-[#B8B4AC] group-hover:shadow-sm">
+                    <Card className="h-full transition-[border-color,box-shadow] duration-150 group-hover:border-border-strong group-hover:shadow-sm">
                       <CardContent className="flex h-full flex-col justify-between p-5">
                         <div className="space-y-3">
                           <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-base font-semibold tracking-tight text-[#18181B] group-hover:text-[#0F766E] transition-colors line-clamp-2">
+                            <h2 className="text-base font-semibold tracking-tight text-ink group-hover:text-accent transition-colors line-clamp-2">
                               {group.name}
                             </h2>
                             <Badge variant="outline" className="shrink-0 font-mono text-[11px]">
@@ -156,13 +156,13 @@ export function GroupsListPage() {
 
                           <div className="flex flex-wrap items-center gap-2">
                             {membership && <RoleBadge role={membership.role} />}
-                            <span className="text-xs text-[#71717A]">
+                            <span className="text-xs text-ink-muted">
                               Created {formatDate(group.createdAt)}
                             </span>
                           </div>
                         </div>
 
-                        <div className="mt-5 flex items-center justify-between border-t border-[#F4F3EF] pt-3.5 text-xs font-medium text-[#52525B] group-hover:text-[#0F766E]">
+                        <div className="mt-5 flex items-center justify-between border-t border-surface-subtle pt-3.5 text-xs font-medium text-ink-secondary group-hover:text-accent">
                           <span>Open group</span>
                           <ArrowRight
                             className="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
