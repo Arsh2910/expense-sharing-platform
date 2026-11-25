@@ -58,7 +58,7 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
           : focused ? "This invitation is no longer pending." : "You have no pending invitations."}</Alert>
       )}
       {invitations?.map((invitation) => (
-        <Card key={invitation.id} className="border-l-4 border-l-[#a1bcaa]">
+        <Card key={invitation.id}>
           <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
             <div>
               <h2 className="break-words font-semibold text-ink">{invitation.group.name}</h2>

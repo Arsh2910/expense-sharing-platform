@@ -75,7 +75,7 @@ export function BalancesView({
       {/* 1. Current user net position highlight card */}
       {currentUserBalance ? (
         <Card
-          className={`overflow-hidden border border-l-4 ${
+          className={`overflow-hidden ${
             currentUserBalance.direction === "RECEIVES"
               ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
               : currentUserBalance.direction === "OWES"

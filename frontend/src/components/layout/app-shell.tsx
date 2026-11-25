@@ -1,16 +1,15 @@
 import * as React from "react";
-import * as NavigationDialog from "@radix-ui/react-dialog";
 import {
   Activity,
   ChevronDown,
   Code2,
   LayoutDashboard,
   LogOut,
-  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Mail,
   Settings,
   Users,
-  X,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/ui/avatar";
@@ -49,7 +48,7 @@ const NAV_ITEMS: readonly NavItem[] = [
     : []),
 ] as const;
 
-function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
+function SidebarNav({ collapsed }: { collapsed: boolean }) {
   return (
     <nav
       aria-label="Main navigation"
@@ -62,10 +61,12 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
             key={item.to}
             to={item.to}
             end={item.end}
-            onClick={onItemClick}
+            aria-label={item.label}
+            title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                collapsed && "justify-center px-0",
                 isActive
                   ? "bg-panel text-accent"
                   : "text-ink-secondary hover:bg-panel hover:text-ink",
@@ -81,7 +82,7 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
                   )}
                   aria-hidden="true"
                 />
-                <span>{item.label}</span>
+                <span className={collapsed ? "sr-only" : undefined}>{item.label}</span>
               </>
             )}
           </NavLink>
@@ -91,16 +92,31 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   );
 }
 
+function MobileNav() {
+  return (
+    <nav aria-label="Primary destinations" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border-subtle bg-chrome px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
+      {NAV_ITEMS.slice(0, 4).map(({ label, to, end, icon: Icon }) => (
+        <NavLink key={to} to={to} end={end} className={({ isActive }) => cn(
+          "flex min-h-15 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[11px] font-semibold focus-visible:-outline-offset-2",
+          isActive ? "text-accent" : "text-ink-secondary hover:bg-surface-subtle",
+        )}>
+          <Icon className="size-5" aria-hidden="true" />
+          {label === "My Groups" ? "Groups" : label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
 export function AppShell() {
   const { user } = useAuth();
   const logoutMutation = useLogoutMutation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const mobileMenuTrigger = React.useRef<HTMLButtonElement>(null);
+  const [collapsed, setCollapsed] = React.useState(false);
+  const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   const handleLogout = async () => {
-    setMobileMenuOpen(false);
     await logoutMutation.mutateAsync();
     toast({
       title: "Signed out",
@@ -116,87 +132,26 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-canvas text-ink">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-3 focus:text-accent">Skip to content</a>
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-border-subtle lg:bg-chrome">
-        <div className="flex h-16 items-center gap-2.5 border-b border-border-subtle px-5">
-          <BrandMark className="h-7 w-7" />
-          <span className="text-base font-semibold tracking-tight text-ink">
-            SplitCircle
-          </span>
+      <aside className={cn(
+        "hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:flex-col lg:border-r lg:border-border-subtle lg:bg-chrome",
+        collapsed ? "lg:w-18" : "lg:w-60",
+      )}>
+        <div className={cn("flex h-16 items-center gap-2.5 border-b border-border-subtle", collapsed ? "justify-center px-2" : "px-5")}>
+          <BrandMark className="size-7 shrink-0" />
+          {!collapsed && <span className="font-display text-lg font-extrabold tracking-tight">SplitCircle</span>}
         </div>
-
-        <SidebarNav />
-
-        <div className="border-t border-border-subtle p-4">
-          <div className="rounded-lg bg-surface-subtle px-3.5 py-3 border border-border-subtle">
-            <p className="text-xs font-medium text-ink truncate">
-              {displayName}
-            </p>
-            <p className="mt-0.5 text-xs text-ink-muted truncate">{email}</p>
-          </div>
+        <SidebarNav collapsed={collapsed} />
+        <div className="flex justify-end border-t border-border-subtle p-3">
+          <Button variant="ghost" size="icon" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed(!collapsed)}>
+            <CollapseIcon className="size-4" aria-hidden="true" />
+          </Button>
         </div>
       </aside>
 
-      {/* Mobile Navigation Drawer */}
-      <NavigationDialog.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <NavigationDialog.Portal>
-          <NavigationDialog.Overlay className="fixed inset-0 z-40 bg-scrim/55" />
-          <NavigationDialog.Content
-            aria-describedby={undefined}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              mobileMenuTrigger.current?.focus();
-            }}
-            className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto overscroll-contain border-r border-border-subtle bg-surface shadow-xl"
-          >
-            <NavigationDialog.Title className="sr-only">Mobile navigation</NavigationDialog.Title>
-            <div className="flex h-16 items-center justify-between border-b border-border-subtle px-5">
-              <div className="flex items-center gap-2.5">
-                <BrandMark className="h-7 w-7" />
-                <span className="text-base font-semibold tracking-tight">
-                  SplitCircle
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Close navigation menu"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <X className="h-4.5 w-4.5" />
-              </Button>
-            </div>
-            <SidebarNav onItemClick={() => setMobileMenuOpen(false)} />
-            <div className="border-t border-border-subtle p-4">
-              <Button
-                variant="outline"
-                className="w-full justify-start text-ink-secondary"
-                onClick={handleLogout}
-                isLoading={logoutMutation.isPending}
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                Sign out
-              </Button>
-            </div>
-          </NavigationDialog.Content>
-        </NavigationDialog.Portal>
-      </NavigationDialog.Root>
-
       {/* Main Content Column */}
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+      <div className={cn("flex min-w-0 flex-1 flex-col", collapsed ? "lg:pl-18" : "lg:pl-60")}>
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border-subtle bg-chrome px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              ref={mobileMenuTrigger}
-              aria-label="Open navigation menu"
-              aria-expanded={mobileMenuOpen}
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
             <div className="flex items-center gap-2 lg:hidden">
               <BrandMark className="h-6 w-6" />
               <span className="text-sm font-semibold tracking-tight">
@@ -247,6 +202,9 @@ export function AppShell() {
                   />
                   Account settings
                 </DropdownMenuItem>
+                {import.meta.env.DEV && (
+                  <DropdownMenuItem onSelect={() => navigate("/dev/api-tests")}>API testing</DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={handleLogout}
@@ -261,9 +219,10 @@ export function AppShell() {
           </div>
         </header>
 
-        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-7 sm:px-6 lg:px-10 lg:py-10">
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pt-7 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9">
           <Outlet />
         </main>
+        <MobileNav />
       </div>
     </div>
   );

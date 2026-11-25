@@ -7,8 +7,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { useMyGroupsQuery } from "@/features/groups/groups.queries";
 import { getErrorMessage } from "@/lib/api/errors";
+import { useAuth } from "@/hooks/use-auth";
+import { RecentActivity } from "./recent-activity";
 
 export function ActivityPage() {
+  const { user } = useAuth();
   const groupsQuery = useMyGroupsQuery();
   const groups = groupsQuery.data ?? [];
 
@@ -16,7 +19,7 @@ export function ActivityPage() {
     <div className="space-y-6">
       <PageHeader
         title="Activity"
-        description="Choose a group to see its expense, settlement, and membership history."
+        description="Recent events across your groups. Open a group to see its full history."
       />
 
       {groupsQuery.isPending ? (
@@ -38,6 +41,10 @@ export function ActivityPage() {
           action={<Button asChild variant="outline"><Link to="/groups">Go to My Groups</Link></Button>}
         />
       ) : (
+        <>
+        {user && <RecentActivity groups={groups} userId={user.id} />}
+        <section aria-label="History by group">
+        <h2 className="mb-3 text-lg font-extrabold tracking-tight">History by group</h2>
         <Card className="overflow-hidden">
           <ul aria-label="Group activity" className="divide-y divide-border-subtle">
             {groups.map((group) => (
@@ -60,6 +67,8 @@ export function ActivityPage() {
             ))}
           </ul>
         </Card>
+        </section>
+        </>
       )}
     </div>
   );

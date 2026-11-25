@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -30,10 +31,13 @@ import { RoleBadge } from "@/features/groups/role-badge";
 import { invitationsApi, invitationsKeys } from "@/features/invitations/invitations.api";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils/format";
+import { BalanceOverview } from "./balance-overview";
+import { RecentActivity } from "@/features/activity/recent-activity";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [expensePickerOpen, setExpensePickerOpen] = React.useState(false);
   const groupsQuery = useMyGroupsQuery();
   const invitationsQuery = useQuery({
     queryKey: invitationsKeys.inbox(user?.id ?? ""),
@@ -41,7 +45,7 @@ export function DashboardPage() {
     enabled: Boolean(user),
   });
   const pendingInvitations = invitationsQuery.data?.filter((invitation) =>
-    invitation.status === "PENDING" && Date.parse(invitation.expiresAt) > Date.now(),
+    invitation.status === "PENDING",
   ).length ?? 0;
 
   const groups = groupsQuery.data ?? [];
@@ -52,14 +56,14 @@ export function DashboardPage() {
     <div className="space-y-7">
       <PageHeader
         title={`Welcome back, ${firstName}`}
-        description="Open a group to pick up where you left off."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => groups.length ? setExpensePickerOpen(true) : setCreateOpen(true)}>
             <Plus className="h-4 w-4" aria-hidden="true" />
-            New group
+            {groups.length ? "Add expense" : "New group"}
           </Button>
         }
       />
+      {user && groups.length > 0 && <BalanceOverview groups={groups} userId={user.id} />}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section aria-label="Groups overview" className="min-w-0">
           <Card className="h-full">
@@ -185,15 +189,7 @@ export function DashboardPage() {
             </section>
           )}
           <section aria-label="Group shortcuts" className="overflow-hidden rounded-xl border border-border-subtle bg-surface">
-            <Link to="/activity" className="group flex items-center gap-3 p-5 hover:bg-surface-subtle focus-visible:-outline-offset-2">
-              <Activity className="size-4 shrink-0 text-accent" aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">Group activity</span>
-                <span className="block text-sm text-ink-secondary">Review expenses and settlements.</span>
-              </span>
-              <ArrowRight className="size-4 shrink-0 text-ink-muted group-hover:text-accent" aria-hidden="true" />
-            </Link>
-            <Link to="/invitations" className="group flex items-center gap-3 border-t border-border-subtle p-5 hover:bg-surface-subtle focus-visible:-outline-offset-2">
+            <Link to="/invitations" className="group flex items-center gap-3 p-5 hover:bg-surface-subtle focus-visible:-outline-offset-2">
               <Mail className="size-4 shrink-0 text-accent" aria-hidden="true" />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
@@ -211,6 +207,26 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {user && groups.length > 0 && <RecentActivity groups={groups} userId={user.id} limit={4} />}
+      <Dialog open={expensePickerOpen} onOpenChange={setExpensePickerOpen}>
+        <DialogContent className="max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          <DialogHeader>
+            <DialogTitle>Choose a group</DialogTitle>
+            <DialogDescription>The expense will use the group’s currency.</DialogDescription>
+          </DialogHeader>
+          <ul className="mt-4 divide-y divide-border-subtle">
+            {groups.map((group) => (
+              <li key={group.id}>
+                <Link className="flex items-center justify-between gap-3 rounded-md px-2 py-3 text-sm hover:bg-surface-subtle"
+                  to={`/groups/${group.id}?tab=expenses&newExpense=1`} onClick={() => setExpensePickerOpen(false)}>
+                  <span className="min-w-0 break-words font-semibold">{group.name}</span>
+                  <span className="shrink-0 text-ink-secondary">{group.currency}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
       <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );

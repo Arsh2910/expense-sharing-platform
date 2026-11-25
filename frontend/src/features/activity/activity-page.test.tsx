@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { groupsApi } from "@/features/groups/groups.api";
 import { ActivityPage } from "./activity-page";
+import * as activityApi from "./activity.api";
+
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "test-user" } }) }));
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -27,6 +30,10 @@ function renderPage() {
 }
 
 it("lists the user's groups and opens the selected group's Activity tab", async () => {
+  vi.spyOn(activityApi, "listGroupActivity").mockResolvedValue({
+    data: [],
+    pagination: { nextCursor: null },
+  });
   const createdAt = "2026-11-24T10:00:00.000Z";
   vi.spyOn(groupsApi, "listMyGroups").mockResolvedValue([
     { id: "trip", name: "Goa trip", currency: "INR", createdAt, memberships: [] },

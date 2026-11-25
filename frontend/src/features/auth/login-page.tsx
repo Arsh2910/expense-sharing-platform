@@ -72,8 +72,8 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="Sign in to your account"
-      subtitle="Enter your email and password to access your shared expense groups."
+      title="Sign in"
+      subtitle="Pick up where you left off with your groups and shared expenses."
       footer={
         <>
           New to SplitCircle?{" "}
