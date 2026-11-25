@@ -1,12 +1,8 @@
-import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { localIsoDate } from "@/lib/utils/format";
 import { EXPENSE_CATEGORIES } from "../expenses.types";
-
-function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export interface ExpenseDetailsSectionProps {
   description: string;
@@ -44,7 +40,7 @@ export function ExpenseDetailsSection({
   assertedTotalError,
   disabled = false,
 }: ExpenseDetailsSectionProps) {
-  const maxDate = React.useMemo(() => getTodayIsoDate(), []);
+  const maxDate = localIsoDate();
 
   return (
     <div className="space-y-4">

@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 
 const methods = new Set(["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]);
-const headers = new Set(["authorization", "content-type", "idempotency-key"]);
+const headers = new Set(["authorization", "content-type", "idempotency-key", "x-client-time-zone"]);
 
 export function browserOriginMiddleware(allowedOrigins: ReadonlySet<string>): RequestHandler {
   return (req, res, next) => {

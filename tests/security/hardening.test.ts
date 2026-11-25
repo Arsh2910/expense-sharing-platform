@@ -17,10 +17,11 @@ it("sets security headers, allows credentialed preflight for the frontend, and r
   const allowed = await request(app).options("/api/groups")
     .set("Origin", origin)
     .set("Access-Control-Request-Method", "POST")
-    .set("Access-Control-Request-Headers", "Content-Type, Idempotency-Key")
+    .set("Access-Control-Request-Headers", "Content-Type, Idempotency-Key, X-Client-Time-Zone")
     .expect(204);
   expect(allowed.headers["access-control-allow-origin"]).toBe(origin);
   expect(allowed.headers["access-control-allow-credentials"]).toBe("true");
+  expect(allowed.headers["access-control-allow-headers"]).toContain("x-client-time-zone");
   expect(allowed.headers["content-security-policy"]).toBeDefined();
   expect(allowed.headers["strict-transport-security"]).toBeUndefined();
 

@@ -49,6 +49,7 @@ export const expensesApi = {
       `/api/groups/${encodeURIComponent(groupId)}/expenses`,
       {
         method: "POST",
+        useClientTimeZone: true,
         body: payload,
       },
     );
@@ -63,6 +64,7 @@ export const expensesApi = {
       `/api/groups/${encodeURIComponent(groupId)}/expenses/${encodeURIComponent(expenseId)}`,
       {
         method: "PATCH",
+        useClientTimeZone: true,
         body: payload,
       },
     );

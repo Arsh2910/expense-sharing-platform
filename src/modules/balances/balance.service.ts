@@ -188,3 +188,46 @@ export async function rebuildGroupBalances(groupId: string) {
     return { groupId, memberCount: userIds.length };
   });
 }
+
+/** Check the projection against a single snapshot of the underlying records. */
+export async function diffGroupBalances(groupId: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.group.findUniqueOrThrow({ where: { id: groupId }, select: { id: true } });
+    const [memberships, live, payers, shares, settlements] = await Promise.all([
+      tx.groupMembership.findMany({
+        where: { groupId }, distinct: ["userId"], select: { userId: true },
+      }),
+      tx.groupBalance.findMany({ where: { groupId }, select: { userId: true, amount: true } }),
+      tx.expensePayer.groupBy({
+        by: ["userId"], where: { expense: { groupId, deletedAt: null } }, _sum: { amount: true },
+      }),
+      tx.expenseSplit.groupBy({
+        by: ["userId"], where: { expense: { groupId, deletedAt: null } }, _sum: { amount: true },
+      }),
+      tx.settlement.groupBy({
+        by: ["fromUserId", "toUserId"], where: { groupId }, _sum: { amount: true },
+      }),
+    ]);
+    const rebuilt = new Map(memberships.map(({ userId }) => [userId, 0n]));
+    const stored = new Map(live.map(({ userId, amount }) => [userId, amount]));
+    const add = (userId: string, amount: bigint) =>
+      rebuilt.set(userId, (rebuilt.get(userId) ?? 0n) + amount);
+
+    for (const payer of payers) add(payer.userId, payer._sum.amount ?? 0n);
+    for (const share of shares) add(share.userId, -(share._sum.amount ?? 0n));
+    for (const settlement of settlements) {
+      const amount = settlement._sum.amount ?? 0n;
+      add(settlement.fromUserId, amount);
+      add(settlement.toUserId, -amount);
+    }
+
+    const differences = sortedUniqueUserIds([...rebuilt.keys(), ...stored.keys()])
+      .map((userId) => ({
+        userId,
+        live: stored.get(userId) ?? null,
+        rebuilt: rebuilt.get(userId) ?? null,
+      }))
+      .filter((row) => row.live !== row.rebuilt);
+    return { groupId, differences };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}

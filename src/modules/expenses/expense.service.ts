@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { transactionCalendarDate } from "../../lib/calendar-date.js";
 import { recordAuditEvent } from "../audit/audit.service.js";
 import {
   computeSplits,
@@ -178,10 +179,6 @@ function prepareAllocations(
   };
 }
 
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function parseExpenseDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -190,8 +187,8 @@ function formatExpenseDate(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
-function assertNotFutureDate(value: string) {
-  if (value > todayIsoDate()) {
+function assertNotFutureDate(value: string, today: string) {
+  if (value > today) {
     throw new ExpenseServiceError(
       "Expense date cannot be in the future",
       "FUTURE_DATE",
@@ -381,6 +378,7 @@ export async function createExpense(
   actorUserId: string,
   input: CreateExpenseInput,
   idempotencyKey?: string,
+  clientTimeZone?: string,
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -400,7 +398,7 @@ export async function createExpense(
         });
         if (replay) return expenseResponse(replay, group.currency);
       }
-      assertNotFutureDate(input.expenseDate);
+      assertNotFutureDate(input.expenseDate, await transactionCalendarDate(tx, clientTimeZone));
       const prepared = prepareAllocations(input, group.currency);
       await assertAllocationMembers(tx, groupId, prepared.allocationUserIds);
       await lockBalanceRows(tx, groupId, prepared.allocationUserIds);
@@ -548,11 +546,12 @@ export async function updateExpense(
   expenseId: string,
   actorUserId: string,
   input: UpdateExpenseInput,
+  clientTimeZone?: string,
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
       const group = await requireWritableGroup(tx, groupId, actorUserId);
-      assertNotFutureDate(input.expenseDate);
+      assertNotFutureDate(input.expenseDate, await transactionCalendarDate(tx, clientTimeZone));
       const current = await tx.expense.findFirst({
         where: { id: expenseId, groupId, deletedAt: null },
         include: allocationInclude,

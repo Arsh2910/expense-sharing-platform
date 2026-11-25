@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { Resend, type ErrorResponse } from "resend";
 
 export type InvitationEmail = Readonly<{
   recipient: string;
@@ -15,10 +15,23 @@ export type VerificationEmail = Readonly<{
 }>;
 
 export class EmailDeliveryError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly permanent = false) {
     super(message);
     this.name = "EmailDeliveryError";
   }
+}
+
+function providerError(error: ErrorResponse, token: string) {
+  const status = error.statusCode;
+  // A concurrent idempotent request can complete, and rate limits/timeouts can clear.
+  const permanent = status !== null && status >= 400 && status < 500
+    && status !== 408 && status !== 429 && error.name !== "concurrent_idempotent_requests";
+  let detail = error.message;
+  for (const secret of [process.env.RESEND_API_KEY, token, encodeURIComponent(token)]) {
+    if (secret) detail = detail.replaceAll(secret, "[redacted]");
+  }
+  detail = detail.replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 1000);
+  return new EmailDeliveryError(`Resend ${status ?? "request error"} (${error.name}): ${detail}`, permanent);
 }
 
 function getResend() {
@@ -66,7 +79,7 @@ export async function sendInvitationEmail(input: InvitationEmail, idempotencyKey
     subject: `Invitation to join ${input.groupName}`,
     html: invitationHtml(input),
   }, { idempotencyKey });
-  if (error) throw new EmailDeliveryError(error.message);
+  if (error) throw providerError(error, input.token);
 }
 
 export async function sendVerificationEmail(input: VerificationEmail, idempotencyKey: string) {
@@ -76,7 +89,7 @@ export async function sendVerificationEmail(input: VerificationEmail, idempotenc
     subject: input.purpose === "EMAIL_CHANGE" ? "Confirm your new email address" : "Verify your email address",
     html: verificationHtml(input),
   }, { idempotencyKey });
-  if (error) throw new EmailDeliveryError(error.message);
+  if (error) throw providerError(error, input.token);
 }
 
 export async function sendPasswordResetEmail(recipient: string, token: string, idempotencyKey: string) {
@@ -89,5 +102,5 @@ export async function sendPasswordResetEmail(recipient: string, token: string, i
     html: `<h1>Reset your password</h1><p><a href="${escapeHtml(url.toString())}">Choose a new password</a></p>
       <p>This link expires 30 minutes after it was requested. If you didn't request it, you can ignore this email.</p>`,
   }, { idempotencyKey });
-  if (error) throw new EmailDeliveryError("Resend rejected the password reset email");
+  if (error) throw providerError(error, token);
 }

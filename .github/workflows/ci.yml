@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: splitcircle_test
+          POSTGRES_USER: splitcircle
+          POSTGRES_PASSWORD: splitcircle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U splitcircle -d splitcircle_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://splitcircle:splitcircle@127.0.0.1:5432/splitcircle_test
+      JWT_ACCESS_SECRET: splitcircle-ci-test-secret-not-for-production
+      RATE_LIMIT_TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npx prisma generate --config prisma7.config.ts
+      - run: npm run migrate:deploy -- --config prisma7.config.ts
+      - run: npm run build
+      - run: npm test
+      - run: npm run rebuild-balances
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm test
+      - run: npm run build

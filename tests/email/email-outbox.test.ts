@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../src/lib/prisma.js";
 import { deliverEmailOutbox, pruneCompletedEmails, reconcileEmailOutbox } from "../../src/modules/email/email-outbox.service.js";
-import { sendInvitationEmail, sendPasswordResetEmail } from "../../src/modules/email/email.service.js";
+import { EmailDeliveryError, sendInvitationEmail, sendPasswordResetEmail } from "../../src/modules/email/email.service.js";
 import { encryptOutboxToken } from "../../src/modules/email/outbox-token-crypto.js";
 import { hashToken } from "../../src/modules/auth/token.service.js";
 import { enqueueEmailOutboxBatch } from "../../src/queues/email.queue.js";
@@ -13,7 +13,11 @@ vi.mock("../../src/lib/prisma.js", () => ({
     verificationToken: { findFirst: vi.fn() },
   },
 }));
-vi.mock("../../src/modules/email/email.service.js", () => ({ sendInvitationEmail: vi.fn(), sendPasswordResetEmail: vi.fn() }));
+vi.mock("../../src/modules/email/email.service.js", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../src/modules/email/email.service.js")>(),
+  sendInvitationEmail: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+}));
 vi.mock("../../src/queues/email.queue.js", () => ({ enqueueEmailOutboxBatch: vi.fn() }));
 
 const now = new Date("2026-11-23T12:00:00Z");
@@ -125,6 +129,19 @@ describe("email outbox", () => {
 
     await expect(deliverEmailOutbox(record.id)).rejects.toThrow("Invitation email expired");
     expect(sendInvitationEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { message: "Resend 422 (validation_error): Invalid recipient", permanent: true, status: "DEAD" },
+    { message: "Resend 429 (rate_limit_exceeded): Try again", permanent: false, status: "FAILED" },
+  ])("records provider details for $status delivery", async ({ message, permanent, status }) => {
+    vi.mocked(prisma.emailOutbox.updateManyAndReturn).mockResolvedValue([record]);
+    vi.mocked(sendInvitationEmail).mockRejectedValue(new EmailDeliveryError(message, permanent));
+
+    await expect(deliverEmailOutbox(record.id)).rejects.toThrow(message);
+    expect(prisma.emailOutbox.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status, lastError: message, ...(permanent ? { payload: {} } : {}) }),
+    }));
   });
 
   it("does not send an outbox row after its invitation is revoked or replaced", async () => {

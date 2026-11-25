@@ -70,6 +70,7 @@ export async function refreshAuthSession(): Promise<boolean> {
 export interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
+  useClientTimeZone?: boolean;
   signal?: AbortSignal;
   /** Disable automatic token refresh on 401 (e.g., for auth probes or auth mutations) */
   skipRefresh?: boolean;
@@ -101,6 +102,10 @@ export async function apiRequest<T>(
       const headers: Record<string, string> = {};
       if (options.body !== undefined) {
         headers["Content-Type"] = "application/json";
+      }
+      if (options.useClientTimeZone) {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (timeZone) headers["X-Client-Time-Zone"] = timeZone;
       }
 
       return await fetch(url, {

@@ -333,6 +333,36 @@ describe("Expense APIs", () => {
     expect(duplicate.status).toBe(400);
   });
 
+  it("uses the browser calendar date for both the API and PostgreSQL date checks", async () => {
+    const owner = await createTestUser();
+    const group = await request(app).post("/api/groups")
+      .set("Authorization", owner.authHeader)
+      .send({ name: "Calendar boundary", currency: "USD" }).expect(201);
+    const dateInKiritimati = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const payload = {
+      description: "Local date expense", expenseDate: dateInKiritimati,
+      payers: [{ userId: owner.user.id, amount: "1.00" }],
+      split: { type: "EQUAL", participants: [owner.user.id] },
+    };
+    const submit = (zone: string) => request(app).post(`/api/groups/${group.body.data.id}/expenses`)
+      .set("Authorization", owner.authHeader).set("X-Client-Time-Zone", zone).send(payload);
+
+    const accepted = await submit("Pacific/Kiritimati").expect(201);
+    expect(accepted.body.data.expenseDate).toBe(dateInKiritimati);
+    const utc = await request(app).post(`/api/groups/${group.body.data.id}/expenses`)
+      .set("Authorization", owner.authHeader).send({ ...payload, expenseDate: today() }).expect(201);
+    const created = await prisma.expense.findMany({
+      where: { id: { in: [accepted.body.data.id, utc.body.data.id] } },
+      select: { createdAt: true },
+    });
+    expect(created).toHaveLength(2);
+    expect(Math.abs(created[0].createdAt.getTime() - created[1].createdAt.getTime())).toBeLessThan(60_000);
+    const denied = await submit("Etc/GMT+12").expect(422);
+    expect(denied.body.code).toBe("FUTURE_DATE");
+    const invalid = await submit("Mars/Olympus").expect(400);
+    expect(invalid.body.code).toBe("INVALID_TIME_ZONE");
+  });
+
   it("rejects expenses for archived groups", async () => {
     const { owner, groupId } = await createGroupWithMember();
     await request(app)

@@ -80,6 +80,7 @@ export const createExpenseController: RequestHandler<{
       actorUserId,
       body.data,
       idempotencyKey,
+      req.get("X-Client-Time-Zone"),
     );
     res.status(201).json({
       message: "Expense created successfully",
@@ -229,6 +230,7 @@ export const updateExpenseController: RequestHandler<{
       params.data.expenseId,
       actorUserId,
       body.data,
+      req.get("X-Client-Time-Zone"),
     );
     res.status(200).json({
       message: "Expense updated successfully",

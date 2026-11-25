@@ -6,7 +6,7 @@ import { emailQueueName, redisConnection } from "../queues/email.queue.js";
 
 validateEnvironment("email-worker");
 const { prisma } = await import("../lib/prisma.js");
-const { deliverEmailOutbox, protectLegacyEmailTokens, pruneCompletedEmails, reconcileEmailOutbox } =
+const { OutboxDeliveryError, deliverEmailOutbox, protectLegacyEmailTokens, pruneCompletedEmails, reconcileEmailOutbox } =
   await import("../modules/email/email-outbox.service.js");
 const { expireInvitations } = await import("../modules/invitations/invitation.service.js");
 
@@ -16,7 +16,10 @@ const worker = new Worker<{ outboxId: string }>(
   { connection: redisConnection(), concurrency: 5 },
 );
 worker.on("completed", (job) => console.log(`Email job completed: ${job.id}`));
-worker.on("failed", (job) => console.error(`Email job failed: ${job?.id}`));
+worker.on("failed", (job, error) => console.error(
+  `Email job failed: ${job?.id}`,
+  error instanceof OutboxDeliveryError ? error.message : "Outbox processing failed",
+));
 worker.on("error", () => console.error("Email worker error"));
 
 let reconciliation: Promise<void> | undefined;

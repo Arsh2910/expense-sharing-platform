@@ -19,6 +19,7 @@ export const settlementsApi = {
       `/api/groups/${encodeURIComponent(groupId)}/settlements`,
       {
         method: "POST",
+        useClientTimeZone: true,
         body: payload,
       },
     );
@@ -32,6 +33,7 @@ export const settlementsApi = {
       `/api/groups/${encodeURIComponent(groupId)}/settlements/${encodeURIComponent(settlementId)}/reverse`,
       {
         method: "POST",
+        useClientTimeZone: true,
       },
     );
   },

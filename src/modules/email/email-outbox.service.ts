@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { enqueueEmailOutboxBatch } from "../../queues/email.queue.js";
 import { hashToken } from "../auth/token.service.js";
-import { sendInvitationEmail, sendPasswordResetEmail, sendVerificationEmail } from "./email.service.js";
+import { EmailDeliveryError, sendInvitationEmail, sendPasswordResetEmail, sendVerificationEmail } from "./email.service.js";
 
 import { decryptOutboxToken, encryptOutboxToken } from "./outbox-token-crypto.js";
 
@@ -9,6 +9,8 @@ const claimDurationMs = 5 * 60_000;
 const maxAttempts = 5;
 
 class PermanentEmailError extends Error {}
+
+export class OutboxDeliveryError extends Error {}
 
 function deliveryToken(payload: Record<string, unknown>) {
   if (typeof payload.encryptedToken === "string") return decryptOutboxToken(payload.encryptedToken);
@@ -178,8 +180,10 @@ export async function deliverEmailOutbox(outboxId: string) {
       throw new PermanentEmailError(`Unsupported email type: ${record.type}`);
     }
   } catch (error) {
-    const message = error instanceof PermanentEmailError ? error.message : "Email delivery failed";
-    const terminal = error instanceof PermanentEmailError || record.attempts >= maxAttempts;
+    const isDeliveryError = error instanceof EmailDeliveryError;
+    const message = error instanceof PermanentEmailError || isDeliveryError ? error.message : "Email delivery failed";
+    const terminal = error instanceof PermanentEmailError || (isDeliveryError && error.permanent)
+      || record.attempts >= maxAttempts;
     await prisma.emailOutbox.updateMany({
       where: claim,
       data: {
@@ -189,7 +193,7 @@ export async function deliverEmailOutbox(outboxId: string) {
         lastError: message,
       },
     });
-    throw new Error(message);
+    throw new OutboxDeliveryError(message);
   }
 
   await prisma.emailOutbox.updateMany({

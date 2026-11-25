@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { InvalidClientTimeZoneError } from "../lib/calendar-date.js";
 
 const bodyErrors = new Map([
   ["entity.parse.failed", { status: 400, message: "Invalid JSON request body" }],
@@ -14,6 +15,10 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   }
 
   const expected = bodyErrors.get(error?.type);
+  if (error instanceof InvalidClientTimeZoneError) {
+    res.status(400).json({ code: "INVALID_TIME_ZONE", message: error.message });
+    return;
+  }
   if (expected) {
     res.status(expected.status).json({ message: expected.message });
     return;
