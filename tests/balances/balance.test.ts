@@ -1,9 +1,12 @@
 import crypto from "node:crypto";
+import fc from "fast-check";
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
-import { rebuildGroupBalances } from "../../src/modules/balances/balance.service.js";
+import { diffGroupBalances, rebuildGroupBalances } from "../../src/modules/balances/balance.service.js";
+import { createExpense as writeExpense, deleteExpense, updateExpense } from "../../src/modules/expenses/expense.service.js";
+import { createSettlement, reverseSettlement } from "../../src/modules/settlements/settlement.service.js";
 import { createTestUser, joinTestGroup } from "../helpers.js";
 
 function today() {
@@ -202,7 +205,11 @@ describe("Group balance APIs", () => {
       data: { amount: 999999n },
     });
 
+    expect(await diffGroupBalances(groupId)).toEqual({
+      groupId, differences: [{ userId: owner.user.id, live: 999999n, rebuilt: 500n }],
+    });
     await rebuildGroupBalances(groupId);
+    expect((await diffGroupBalances(groupId)).differences).toEqual([]);
     const response = await request(app)
       .get(`/api/groups/${groupId}/balances`)
       .set("Authorization", owner.authHeader);
@@ -210,4 +217,54 @@ describe("Group balance APIs", () => {
       balanceMinor: 500,
     });
   });
+
+  it("keeps live balances zero-sum and equal to a rebuild across generated mutations", async () => {
+    const amount = fc.integer({ min: 1, max: 20_000 });
+    const change = fc.record({
+      original: amount, revised: amount, repayment: amount,
+      edit: fc.boolean(), delete: fc.boolean(), reverse: fc.boolean(),
+    });
+    const major = (minor: number) => `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`;
+
+    await fc.assert(fc.asyncProperty(fc.array(change, { minLength: 1, maxLength: 4 }), async (history) => {
+      const { owner, member, groupId } = await createGroupWithMember();
+      const ownerId = owner.user.id;
+      const memberId = member.user.id;
+      const expenseInput = (minor: number, payerId: string) => ({
+        description: "Generated expense",
+        expenseDate: today(),
+        payers: [{ userId: payerId, amount: major(minor) }],
+        split: { type: "EQUAL" as const, participants: [ownerId, memberId] },
+      });
+      const assertProjection = async () => {
+        const live = await prisma.groupBalance.findMany({ where: { groupId } });
+        expect(live).toHaveLength(2);
+        expect(live.reduce((sum, row) => sum + row.amount, 0n)).toBe(0n);
+        expect((await diffGroupBalances(groupId)).differences).toEqual([]);
+      };
+
+      for (const entry of history) {
+        let expense = await writeExpense(groupId, ownerId, expenseInput(entry.original, ownerId));
+        await assertProjection();
+        if (entry.edit) {
+          expense = await updateExpense(groupId, expense.id, memberId, {
+            ...expenseInput(entry.revised, memberId), version: expense.version,
+          });
+          await assertProjection();
+        }
+        const settlement = await createSettlement(groupId, memberId, {
+          fromUserId: memberId, toUserId: ownerId, amount: major(entry.repayment), settledOn: today(),
+        });
+        await assertProjection();
+        if (entry.reverse) {
+          await reverseSettlement(groupId, settlement.id, ownerId);
+          await assertProjection();
+        }
+        if (entry.delete) {
+          await deleteExpense(groupId, expense.id, ownerId, expense.version);
+          await assertProjection();
+        }
+      }
+    }), { numRuns: 12 });
+  }, 60_000);
 });

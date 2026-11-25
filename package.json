@@ -12,6 +12,7 @@
     "worker:email": "tsx src/workers/email.worker.ts",
     "start:worker": "node dist/src/workers/email.worker.js",
     "migrate:deploy": "prisma migrate deploy",
+    "rebuild-balances": "tsx scripts/rebuild-balances.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",

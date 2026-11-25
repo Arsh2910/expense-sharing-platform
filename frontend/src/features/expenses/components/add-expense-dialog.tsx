@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { localIsoDate } from "@/lib/utils/format";
 import type { GroupMember } from "@/types/api";
 import { getErrorMessage, getValidationErrors, isApiError } from "@/lib/api/errors";
 import {
@@ -50,10 +51,6 @@ import {
   PercentageSplitEditor,
 } from "./percentage-split-editor";
 import { SplitMethodSelector } from "./split-method-selector";
-
-function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export interface AddExpenseDialogProps {
   groupId: string;
@@ -100,7 +97,7 @@ function AddExpenseForm({
   const isPending = isEdit ? updateMutation.isPending : createMutation.isPending;
   const activeError = isEdit ? updateMutation.error : createMutation.error;
 
-  const todayIso = React.useMemo(() => getTodayIsoDate(), []);
+  const todayIso = localIsoDate();
 
   const defaultUser =
     members.find((m) => m.user.id === user?.id)?.user.id ??

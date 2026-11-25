@@ -64,6 +64,7 @@ export const createSettlementController: RequestHandler<{
       actorUserId,
       body.data,
       idempotencyKey,
+      req.get("X-Client-Time-Zone"),
     );
     res.status(201).json({
       message: "Settlement recorded successfully",
@@ -135,6 +136,7 @@ export const reverseSettlementController: RequestHandler<{
       params.data.groupId,
       params.data.settlementId,
       actorUserId,
+      req.get("X-Client-Time-Zone"),
     );
     res.status(201).json({
       message: "Settlement reversed successfully",

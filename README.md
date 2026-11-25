@@ -5,7 +5,7 @@ A full-stack expense-sharing application for friends, roommates, families, and t
 **Live app:** [splitcircle12.vercel.app](https://splitcircle12.vercel.app)
 **API health:** [expense-sharing-api-ibbk.onrender.com/health](https://expense-sharing-api-ibbk.onrender.com/health)
 
-> **Status:** deployed MVP. The web app, API, PostgreSQL database, and Redis-compatible queue storage are hosted. The email worker must still be run as a persistent process for queued emails to be delivered. See [Deployment and operations](docs/deployment.md).
+> **Status:** deployed MVP. Vercel hosts the frontend, Render hosts the API, PostgreSQL, and Valkey, and Azure runs the email worker under `systemd`. A verification email was received after the SSH session was closed and the local worker was stopped. See [Deployment and operations](docs/deployment.md).
 
 ## What it does
 
@@ -27,7 +27,7 @@ React + Vite frontend (Vercel)
 Express API (Render) ───────────────> PostgreSQL (Render)
              |
              v
-Redis / Valkey (Render) <── BullMQ email worker ──> Resend
+Redis / Valkey (Render) <── BullMQ email worker (Azure) ──> Resend
 ```
 
 PostgreSQL is the source of truth for financial records. Redis is used for rate limiting and job delivery, never for balances or financial state.
@@ -39,6 +39,8 @@ PostgreSQL is the source of truth for financial records. Redis is used for rate 
 - Group balances are rebuildable projections of expenses and settlements.
 - Expense deletion is historical rather than destructive.
 - Settlement corrections are reversals, not edits to past records.
+- Active group owners and admins can record or reverse any settlement in their group. Other active members can act on settlements they participate in. New settlements require two distinct active participants.
+- Expense and settlement dates are calendar dates. The browser sends its time zone so the API can validate dates against the user's local day. Clients that omit it use UTC.
 - Idempotency keys stop retries or double-clicks from creating duplicate financial effects.
 
 More detail is in [the financial core design](docs/domain/financial-core.md).
@@ -53,7 +55,7 @@ More detail is in [the financial core design](docs/domain/financial-core.md).
 | Async email | Transactional outbox, BullMQ, Redis/Valkey, Resend |
 | Security | HttpOnly cookies, JWT rotation, Helmet, CORS allowlist, Redis-backed rate limits |
 | Testing | Vitest, Supertest, fast-check |
-| Hosting | Vercel, Render Web Service, Render PostgreSQL, Render Key Value |
+| Hosting | Vercel, Render Web Service, Render PostgreSQL, Render Key Value, Azure Linux VM with `systemd` |
 
 ## Run locally
 
@@ -97,7 +99,7 @@ npm run worker:email
 
 The worker claims due records from the `email_outbox` table, sends them through Resend, and marks the outcome. It also reconciles records that were committed when Redis was unavailable.
 
-For an external Render PostgreSQL connection on some local clients, set `PGSSLMODE=verify-full` before starting the worker.
+When the worker runs outside Render, use the external PostgreSQL URL with `sslmode=verify-full` and the external Key Value URL (`rediss://`). See the [Azure worker setup](docs/deployment.md#azure-worker-setup).
 
 ## Environment variables
 
@@ -128,15 +130,19 @@ In production, `PASSWORD_RESET_OUTBOX_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_E
 | `npm run worker:email` | Run email worker with TypeScript |
 | `npm run start:worker` | Run compiled email worker |
 | `npm run migrate:deploy` | Apply committed production migrations |
+| `npm run rebuild-balances` | Recompute balances in memory and report differences from PostgreSQL without writing changes |
+
+Use `npm run rebuild-balances -- --group <group-uuid>` to check one group. The command reports the stored and rebuilt values in minor units and exits with code 1 when it finds a mismatch.
 
 Frontend commands are documented in [`frontend/README.md`](frontend/README.md).
 
 ## Current limitations and next steps
 
-- The deployed free Render setup does not host a persistent background worker. It needs an always-on worker host before email delivery is fully unattended.
-- The Activity view is group-scoped. An account-wide activity stream is a future read model.
-- Account-wide balance totals are intentionally not shown because groups may use different currencies. A cross-group total needs an explicit FX and base-currency policy.
-- Monitoring, error tracking, webhook handling for Resend delivery events, and CI are the next operations milestones.
+- The Activity view combines recent events from group endpoints. A dedicated paginated account-level feed is a future read model.
+- The dashboard summarizes balances by currency. A total spanning currencies would require an explicit FX and base-currency policy.
+- Monitoring, error tracking, and webhook handling for Resend delivery events are the next operations milestones.
+
+GitHub Actions checks pull requests and pushes to `main`. It builds both applications, runs the backend suite against disposable PostgreSQL and Redis services, checks for balance drift, and runs the frontend tests.
 
 ## Documentation
 

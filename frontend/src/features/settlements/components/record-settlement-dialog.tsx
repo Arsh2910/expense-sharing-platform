@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { localIsoDate } from "@/lib/utils/format";
 import type { GroupMember } from "@/types/api";
 import { useGroupBalancesQuery } from "@/features/balances/balances.queries";
 import {
@@ -28,10 +29,6 @@ import {
 import { getErrorMessage, isApiError } from "@/lib/api/errors";
 import { useCreateSettlementMutation } from "../settlements.queries";
 import type { CreateSettlementPayload, Settlement } from "../settlements.types";
-
-function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export interface RecordSettlementDialogProps {
   groupId: string;
@@ -65,7 +62,9 @@ function RecordSettlementForm({
 }: RecordSettlementFormProps) {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const todayIso = React.useMemo(() => getTodayIsoDate(), []);
+  const todayIso = localIsoDate();
+  const actorRole = members.find((member) => member.user.id === user?.id)?.role;
+  const canRecordForOthers = actorRole === "OWNER" || actorRole === "ADMIN";
   const exponent = getCurrencyExponent(currency);
 
   const { data: balanceData } = useGroupBalancesQuery(groupId, true);
@@ -92,6 +91,9 @@ function RecordSettlementForm({
     if (defaultPayerId && members.some((m) => m.user.id === defaultPayerId)) {
       return defaultPayerId;
     }
+    if (!canRecordForOthers && actorRole && user && balanceMap.get(user.id)?.direction !== "RECEIVES") {
+      return user.id;
+    }
     // If current user owes money, default payer to current user
     const currentUserBal = user ? balanceMap.get(user.id) : null;
     if (
@@ -112,7 +114,7 @@ function RecordSettlementForm({
       }
     });
     return minUser;
-  }, [defaultPayerId, members, user, balanceMap]);
+  }, [defaultPayerId, members, user, balanceMap, canRecordForOthers, actorRole]);
 
   // Initial recipient selection logic
   const initialRecipient = React.useMemo(() => {
@@ -123,6 +125,7 @@ function RecordSettlementForm({
     ) {
       return defaultRecipientId;
     }
+    if (!canRecordForOthers && user && user.id !== initialPayer) return user.id;
     // Find a member who is owed money (RECEIVES) and is not the payer
     const receiver = members.find(
       (m) =>
@@ -134,7 +137,7 @@ function RecordSettlementForm({
     // Fallback to first member who is not the payer
     const other = members.find((m) => m.user.id !== initialPayer);
     return other?.user.id ?? "";
-  }, [defaultRecipientId, initialPayer, members, balanceMap]);
+  }, [defaultRecipientId, initialPayer, members, balanceMap, canRecordForOthers, user]);
 
   const [fromUserId, setFromUserId] = React.useState(initialPayer);
   const [toUserId, setToUserId] = React.useState(initialRecipient);
@@ -169,6 +172,8 @@ function RecordSettlementForm({
     validationMessage = "Select both a payer and a recipient.";
   } else if (isSameUser) {
     validationMessage = "Payer and recipient must be different group members.";
+  } else if (!canRecordForOthers && user?.id !== fromUserId && user?.id !== toUserId) {
+    validationMessage = "Select yourself as the payer or recipient.";
   } else if (!amount.trim()) {
     validationMessage = "Enter a settlement amount.";
   } else if (!isAmountPositive) {

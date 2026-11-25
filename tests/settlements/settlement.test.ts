@@ -173,6 +173,28 @@ describe("Settlement APIs", () => {
     });
   });
 
+  it("allows participants and admins to manage settlements and bars uninvolved members", async () => {
+    const { owner, member, groupId } = await createGroupWithMember();
+    const observer = await createTestUser();
+    await joinTestGroup(app, groupId, owner, observer);
+    const record = (authHeader: string) => createSettlement(groupId, authHeader, owner.user.id, member.user.id);
+
+    expect((await record(observer.authHeader)).status).toBe(403);
+    const created = await record(member.authHeader);
+    expect(created.status).toBe(201);
+    const reverse = (authHeader: string) => request(app)
+      .post(`/api/groups/${groupId}/settlements/${created.body.data.id}/reverse`)
+      .set("Authorization", authHeader);
+    await reverse(observer.authHeader).expect(403);
+    expect(await prisma.settlement.count({ where: { groupId } })).toBe(1);
+
+    await prisma.groupMembership.updateMany({
+      where: { groupId, userId: observer.user.id, leftAt: null }, data: { role: "ADMIN" },
+    });
+    expect((await record(observer.authHeader)).status).toBe(201);
+    await reverse(observer.authHeader).expect(201);
+  });
+
   it("rejects self-settlement, former participants, and future dates", async () => {
     const { owner, member, groupId } = await createGroupWithMember();
     const self = await createSettlement(

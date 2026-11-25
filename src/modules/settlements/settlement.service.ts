@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
+import { transactionCalendarDate } from "../../lib/calendar-date.js";
 import { recordAuditEvent } from "../audit/audit.service.js";
 import {
   lockBalanceRows,
@@ -34,10 +35,6 @@ export class SettlementServiceError extends Error {
     super(message);
     this.name = "SettlementServiceError";
   }
-}
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function parseSettlementDate(value: string) {
@@ -99,15 +96,29 @@ async function requireWritableGroup(
 
   const actorMembership = await tx.groupMembership.findFirst({
     where: { groupId, userId: actorUserId, leftAt: null },
-    select: { id: true },
+    select: { role: true },
   });
   if (!actorMembership) {
     throw new SettlementServiceError(
-      "Only active group members can record settlements",
+      "Only active group members can manage settlements",
       "FORBIDDEN",
     );
   }
-  return group;
+  return { ...group, actorRole: actorMembership.role };
+}
+
+function assertCanManageSettlement(
+  role: "OWNER" | "ADMIN" | "MEMBER",
+  actorUserId: string,
+  fromUserId: string,
+  toUserId: string,
+) {
+  if (role === "MEMBER" && actorUserId !== fromUserId && actorUserId !== toUserId) {
+    throw new SettlementServiceError(
+      "Only a settlement participant or group admin can manage this settlement",
+      "FORBIDDEN",
+    );
+  }
 }
 
 async function requireReadableGroup(groupId: string, actorUserId: string) {
@@ -155,8 +166,8 @@ async function assertCurrentParticipants(
   }
 }
 
-function assertInputDates(input: CreateSettlementInput) {
-  if (input.settledOn > todayIsoDate()) {
+function assertInputDates(input: CreateSettlementInput, today: string) {
+  if (input.settledOn > today) {
     throw new SettlementServiceError(
       "Settlement date cannot be in the future",
       "FUTURE_DATE",
@@ -191,10 +202,12 @@ export async function createSettlement(
   actorUserId: string,
   input: CreateSettlementInput,
   idempotencyKey?: string,
+  clientTimeZone?: string,
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
     const group = await requireWritableGroup(tx, groupId, actorUserId);
+    assertCanManageSettlement(group.actorRole, actorUserId, input.fromUserId, input.toUserId);
     const scope = `settlement:create:${groupId}`;
     const idempotency = await beginIdempotency(
       tx,
@@ -209,7 +222,7 @@ export async function createSettlement(
       });
       if (replay) return settlementResponse(replay, group.currency);
     }
-    assertInputDates(input);
+    assertInputDates(input, await transactionCalendarDate(tx, clientTimeZone));
     if (input.fromUserId === input.toUserId) {
       throw new SettlementServiceError(
         "A settlement must involve two different users",
@@ -283,6 +296,7 @@ export async function reverseSettlement(
   groupId: string,
   settlementId: string,
   actorUserId: string,
+  clientTimeZone?: string,
 ) {
   return prisma.$transaction(async (tx) => {
     const group = await requireWritableGroup(tx, groupId, actorUserId);
@@ -301,6 +315,8 @@ export async function reverseSettlement(
         "ALREADY_REVERSED",
       );
     }
+    assertCanManageSettlement(group.actorRole, actorUserId, original.fromUserId, original.toUserId);
+    const settledOn = parseSettlementDate(await transactionCalendarDate(tx, clientTimeZone));
 
     await lockBalanceRows(tx, groupId, [original.fromUserId, original.toUserId]);
     const existingReversal = await tx.settlement.findUnique({
@@ -320,7 +336,7 @@ export async function reverseSettlement(
         fromUserId: original.toUserId,
         toUserId: original.fromUserId,
         amount: original.amount,
-        settledOn: new Date(),
+        settledOn,
         note: `Reversal of settlement ${original.id}`,
         reversesId: original.id,
         createdById: actorUserId,

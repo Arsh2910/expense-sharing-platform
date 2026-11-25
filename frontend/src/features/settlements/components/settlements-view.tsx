@@ -19,6 +19,7 @@ import type { GroupMember } from "@/types/api";
 import { formatMoneyDisplay } from "@/features/expenses/money";
 import { getErrorMessage, isApiError } from "@/lib/api/errors";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
+import { useAuth } from "@/hooks/use-auth";
 import {
   useReverseSettlementMutation,
   useSettlementsQuery,
@@ -41,6 +42,9 @@ export function SettlementsView({
   onRecordSettlement,
 }: SettlementsViewProps) {
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const actorRole = members.find((member) => member.user.id === user?.id)?.role;
+  const canReverseForOthers = actorRole === "OWNER" || actorRole === "ADMIN";
   const { data: settlements, isLoading, isError, error, refetch } =
     useSettlementsQuery(groupId);
 
@@ -196,6 +200,8 @@ export function SettlementsView({
         {settlements.map((settlement) => {
           const isReversal = Boolean(settlement.reversesId);
           const isReversed = reversedSettlementIds.has(settlement.id);
+          const canReverse = Boolean(actorRole) && (canReverseForOthers
+            || user?.id === settlement.fromUserId || user?.id === settlement.toUserId);
           const payerName = getMemberName(settlement.fromUserId);
           const recipientName = getMemberName(settlement.toUserId);
 
@@ -282,7 +288,7 @@ export function SettlementsView({
                   <p className="text-[10px] text-ink-muted">Direct Payment</p>
                 </div>
 
-                {!isArchived && !isReversed && !isReversal && (
+                {!isArchived && canReverse && !isReversed && !isReversal && (
                   <Button
                     variant="outline"
                     size="sm"

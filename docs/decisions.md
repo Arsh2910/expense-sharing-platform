@@ -30,7 +30,8 @@ Newest decisions appended at the bottom of each section. Status values: `final` 
 | Create expenses | Yes | Yes | Yes |
 | Edit any expense | Yes | Yes | Yes |
 | Delete any expense | Yes | Yes | Yes |
-| Record settlements | Yes | Yes | Yes |
+| Record settlements | Yes | Yes | Only as a participant |
+| Reverse settlements | Yes | Yes | Only as a participant |
 | Invite members | Yes | Yes | No |
 | Remove members | Yes | Yes | No |
 | Appoint admins | Yes | No | No |
@@ -75,7 +76,7 @@ Source: [`domain/financial-core.md`](domain/financial-core.md).
 | C3 | Whether removed members retain read access to the group's history | memberships module |
 | C4 | Account deletion and financial-history retention | users module |
 | C5 | Whether `membership_period_id` is added to financial rows for forensics (optional refinement of D9) | schema freeze |
-| C6 | Settlement rules for pairs involving former members (E15) | settlements module |
+| C6 | New settlements require active participants. Historical settlements may be reversed by an authorized active member even if an original participant has left. | resolved |
 | C7 | Whether pairwise debt explanation is in the MVP read models | read models |
 | C8 | Settlement requests / reminders in the initial release | notifications module |
 | C9 | Whether archived groups can be restored | groups module |
@@ -91,6 +92,9 @@ Source: [`domain/financial-core.md`](domain/financial-core.md).
 | O3 | Email delivery uses a transactional outbox and BullMQ rather than being performed in the request handler. | final | A request can commit its user or invitation state even if the email provider or Redis is temporarily unavailable. The worker reconciles due outbox records later. |
 | O4 | Outbox tokens are encrypted at rest using a shared API and worker key. | final | Verification, password-reset, and invitation tokens must not be stored in clear text inside durable job payloads. |
 | O5 | The deployed MVP uses Vercel for the frontend and Render for the API, PostgreSQL, and Redis-compatible Valkey. | final | It provides a simple, low-cost deployment path while preserving separate web, database, and queue responsibilities. |
-| O6 | The worker is a separately deployable process and is currently manual until an always-on worker host is provisioned. | final | Free Render web-service hosting does not provide the needed background-worker service on the current plan. The queue architecture remains valid and has been verified locally. |
-| O7 | Dashboard balances remain group-scoped. | final | Groups may have different currencies. A cross-group amount would be misleading without an explicit base currency and exchange-rate policy. |
-| O8 | Activity is recorded per group, with an account-wide feed deferred. | final | Group-level activity preserves the group context and keeps the initial read model simple. A unified feed can be added later with pagination and group links. |
+| O6 | The worker is a separately deployable process supervised by `systemd` on an Azure Ubuntu VM. | final | The selected Render plan could not provision a background worker. Verification email delivery was confirmed from Azure after disconnecting SSH. |
+| O7 | Group balances are the base read model. The dashboard summarizes them by currency. | final | A total spanning currencies would require an explicit base currency and exchange-rate policy. |
+| O8 | Activity is recorded per group. The frontend combines recent events from group endpoints. | final | This preserves group context and provides a recent overview. A dedicated paginated account-level feed is deferred. |
+| O9 | The browser sends its time zone for expense and settlement writes. The API uses it to determine the current calendar date. | final | Date-only records keep the selected day across regions. Clients without a time zone use UTC. |
+| O10 | Terminal Resend request failures retain the provider's diagnostic after credential and token redaction. Temporary failures retain the retry policy. | final | Operators can identify provider validation failures without repeatedly submitting the same invalid message. |
+| O11 | The balance checker rebuilds from authoritative records and reports drift without modifying the projection. | final | Running the check on production data is a read-only operation. |
