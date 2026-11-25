@@ -1,6 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { Activity, ArrowLeftRight, Receipt, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils/format";
 import type { GroupSummary } from "@/types/api";
@@ -31,7 +32,20 @@ export function RecentActivity({ groups, userId, limit = 30 }: {
         <h2 className="text-lg font-extrabold tracking-tight">Recent activity</h2>
         {limit === 4 && <Link className="text-sm font-semibold text-accent hover:underline" to="/activity">View activity</Link>}
       </div>
-      {pending && <p role="status" className="text-sm text-ink-secondary">Loading activity…</p>}
+      {pending && <p role="status" className="sr-only">Loading activity…</p>}
+      {pending && events.length === 0 && (
+        <div className="divide-y divide-border-subtle rounded-xl border border-border-subtle bg-surface">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="flex items-start gap-3 px-4 py-3.5">
+              <Skeleton className="size-8 shrink-0 rounded-md" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-48 max-w-full" />
+                <Skeleton className="h-3 w-32 max-w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {failed && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
           <p>Some group activity couldn’t load.</p>

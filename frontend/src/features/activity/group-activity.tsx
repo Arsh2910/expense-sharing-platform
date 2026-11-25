@@ -3,6 +3,7 @@ import { Activity } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/api/errors";
@@ -25,7 +26,19 @@ export function GroupActivity({ groupId }: { groupId: string }) {
     <Card>
       <CardHeader><CardTitle>Group activity</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        {activity.isPending && <p role="status">Loading activity…</p>}
+        {activity.isPending && (
+          <>
+            <p role="status" className="sr-only">Loading activity…</p>
+            <div className="divide-y divide-border-subtle">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={index} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 py-3 first:pt-0">
+                  <Skeleton className="h-4 w-48 max-w-full" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         {activity.isError && (
           <div className="space-y-2">
             <Alert variant="error">{getErrorMessage(activity.error)}</Alert>

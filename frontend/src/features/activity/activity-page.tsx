@@ -2,6 +2,7 @@ import { ArrowRight, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -23,7 +24,19 @@ export function ActivityPage() {
       />
 
       {groupsQuery.isPending ? (
-        <p role="status" className="text-sm text-ink-secondary">Loading your groups…</p>
+        <>
+          <p role="status" className="sr-only">Loading your groups…</p>
+          <Card className="divide-y divide-border-subtle">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={index} className="flex items-center gap-3 px-4 py-4 sm:px-5">
+                <Skeleton className="size-9 shrink-0" />
+                <div className="min-w-0 flex-1"><Skeleton className="h-4 w-32 max-w-full" /></div>
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="size-4" />
+              </div>
+            ))}
+          </Card>
+        </>
       ) : groupsQuery.isError ? (
         <Alert variant="error" title="Could not load your groups">
           <div className="flex flex-wrap items-center gap-3">

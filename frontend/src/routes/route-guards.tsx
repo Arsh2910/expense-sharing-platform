@@ -1,10 +1,10 @@
+import { useState } from "react";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { BrandMark } from "@/features/auth/auth-layout";
-import { isApiError } from "@/lib/api/errors";
 
 function SessionLoadingScreen() {
   return (
@@ -21,19 +21,28 @@ function SessionLoadingScreen() {
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-9 w-full" />
         </div>
-        <p className="text-xs text-ink-muted">Verifying your session...</p>
+        <p role="status" className="text-xs text-ink-muted">Verifying your session…</p>
       </div>
     </div>
   );
 }
 
 function SessionErrorScreen({
-  message,
   onRetry,
 }: {
-  message: string;
-  onRetry: () => void;
+  onRetry: () => Promise<unknown>;
 }) {
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  async function retry() {
+    setIsRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setIsRetrying(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-4">
       <div className="w-full max-w-md space-y-4 rounded-xl border border-border-subtle bg-surface p-7 shadow-xs">
@@ -42,11 +51,13 @@ function SessionErrorScreen({
         </div>
         <div className="space-y-1.5">
           <h1 className="text-lg font-semibold text-ink">
-            Unable to connect to the server
+            We couldn’t verify your session
           </h1>
-          <p className="text-sm text-ink-secondary leading-relaxed">{message}</p>
+          <p className="text-sm text-ink-secondary leading-relaxed">
+            Check your connection and try again to continue to SplitCircle.
+          </p>
         </div>
-        <Button onClick={onRetry}>
+        <Button isLoading={isRetrying} onClick={() => { void retry(); }}>
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
           Retry connection
         </Button>
@@ -56,7 +67,7 @@ function SessionErrorScreen({
 }
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading, isError, error, refetchSession } =
+  const { isAuthenticated, isLoading, isError, refetchSession } =
     useAuth();
   const location = useLocation();
 
@@ -65,20 +76,7 @@ export function ProtectedRoute() {
   }
 
   if (isError) {
-    const isNotFound = isApiError(error) && error.status === 404;
-    return (
-      <SessionErrorScreen
-        message={
-          isNotFound
-            ? "The session endpoint (/api/auth/me) returned 404. Verify that the latest backend server is running on port 5000."
-            : (error?.message ??
-              "We could not verify your session right now. Please try again.")
-        }
-        onRetry={() => {
-          void refetchSession();
-        }}
-      />
-    );
+    return <SessionErrorScreen onRetry={refetchSession} />;
   }
 
   if (!isAuthenticated) {

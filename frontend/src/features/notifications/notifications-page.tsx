@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/api/errors";
@@ -58,8 +59,35 @@ export function NotificationsPage() {
           Mark all as read
         </Button>
       )} />
-      {inbox.isPending && <p role="status">Loading notifications…</p>}
-      {inbox.isError && <Alert variant="error">{getErrorMessage(inbox.error)}</Alert>}
+      {inbox.isPending && (
+        <>
+          <p role="status" className="sr-only">Loading notifications…</p>
+          <Card>
+            <CardContent className="pt-5">
+              <div className="divide-y divide-border-subtle">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-1 last:pb-1">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-48 max-w-full" />
+                      <Skeleton className="h-3 w-24 max-w-full" />
+                    </div>
+                    <Skeleton className="h-9 w-24 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+      {inbox.isError && !inbox.isFetchNextPageError && (
+        <Alert variant="error" title="Couldn’t load notifications">
+          <div className="flex flex-wrap items-center gap-3">
+            <p>Try again to refresh your notifications.</p>
+            <Button variant="outline" size="sm" isLoading={inbox.isFetching}
+              onClick={() => { void inbox.refetch(); }}>Retry</Button>
+          </div>
+        </Alert>
+      )}
       {(markRead.isError || markAllRead.isError) && (
         <Alert variant="error">{getErrorMessage(markRead.error ?? markAllRead.error)}</Alert>
       )}
@@ -96,7 +124,9 @@ export function NotificationsPage() {
       )}
       {inbox.hasNextPage && (
         <Button variant="outline" isLoading={inbox.isFetchingNextPage}
-          onClick={() => { void inbox.fetchNextPage(); }}>Load more</Button>
+          onClick={() => { void inbox.fetchNextPage(); }}>
+          {inbox.isFetchNextPageError ? "Retry loading more" : "Load more"}
+        </Button>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { groupsKeys } from "@/features/groups/groups.queries";
 import { useOnboarding } from "@/features/onboarding/onboarding-context";
@@ -44,8 +45,34 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
     <div className="space-y-5">
       <PageHeader title={focused ? "Review invitation" : "Invitations"}
         backTo={focused ? { href: "/invitations", label: "All invitations" } : undefined} />
-      {inbox.isPending && <p role="status">Loading invitations…</p>}
-      {inbox.isError && <Alert variant="error">{getErrorMessage(inbox.error)}</Alert>}
+      {inbox.isPending && (
+        <>
+          <p role="status" className="sr-only">Loading invitations…</p>
+          {Array.from({ length: focused ? 1 : 2 }, (_, index) => (
+            <Card key={index}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-18" />
+                  <Skeleton className="h-10 w-32" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </>
+      )}
+      {inbox.isError && (
+        <Alert variant="error" title="Couldn’t load invitations">
+          <div className="flex flex-wrap items-center gap-3">
+            <p>Try again to check for pending invitations.</p>
+            <Button variant="outline" size="sm" isLoading={inbox.isFetching}
+              onClick={() => { void inbox.refetch(); }}>Retry</Button>
+          </div>
+        </Alert>
+      )}
       {response.isError && (
         <Alert variant="error">
           {getErrorMessage(response.error)}
@@ -55,7 +82,7 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
       {response.isSuccess && response.variables.action === "decline" && (
         <Alert variant="success">Invitation declined.</Alert>
       )}
-      {invitations?.length === 0 && (
+      {inbox.isSuccess && invitations?.length === 0 && (
         <Alert>{fromEmail
           ? "This invitation is unavailable. Check that you signed in with the email address that received it."
           : focused ? "This invitation is no longer pending." : "You have no pending invitations."}</Alert>

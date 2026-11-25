@@ -66,3 +66,16 @@ it("offers the inbox when the link has no matching invitation for the active acc
   expect(screen.queryByRole("button", { name: "Accept invitation" })).toBeNull();
   expect(screen.getByRole("link", { name: "All invitations" }).getAttribute("href")).toBe("/invitations");
 });
+
+it("retries the inbox request and preserves the linked invitation", async () => {
+  vi.spyOn(invitationsApi, "listMine")
+    .mockRejectedValueOnce(new Error("Internal request details"))
+    .mockResolvedValueOnce([invitation]);
+
+  renderInbox("/invitations/accept?invitationId=invitation-1&token=linked-token");
+  expect(screen.getByRole("status").textContent).toBe("Loading invitations…");
+  const retry = await screen.findByRole("button", { name: "Retry" });
+  expect(screen.queryByText("Internal request details")).toBeNull();
+  fireEvent.click(retry);
+  expect(await screen.findByRole("button", { name: "Accept invitation" })).toBeDefined();
+});

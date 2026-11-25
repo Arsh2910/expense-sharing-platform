@@ -1,22 +1,18 @@
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom";
+import { NotFoundPage } from "./not-found-page";
 import { Button } from "@/components/ui/button";
 
 export function RouteErrorPage() {
   const error = useRouteError();
 
-  let title = "Something went wrong";
-  let description =
-    "An unexpected error interrupted this view. Try reloading the page or returning to Overview.";
+  const status = isRouteErrorResponse(error) ? error.status : undefined;
+  if (status === 404) return <NotFoundPage />;
 
-  if (isRouteErrorResponse(error)) {
-    title = `${error.status} — ${error.statusText || "Request error"}`;
-    if (typeof error.data === "string" && error.data) {
-      description = error.data;
-    }
-  } else if (error instanceof Error && error.message) {
-    description = error.message;
-  }
+  const title = status === 403 ? "You don’t have access to this page" : "This page couldn’t load";
+  const description = status === 403
+    ? "Return to Overview to find the groups and activity you can access."
+    : "Try reloading the page. If the issue continues, you can return to Overview.";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-4">
@@ -33,12 +29,14 @@ export function RouteErrorPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Button onClick={() => window.location.reload()}>
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Reload page
-          </Button>
+          {status !== 403 && (
+            <Button onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Reload page
+            </Button>
+          )}
           <Button asChild variant="outline">
-            <Link to="/">
+            <Link to="/" reloadDocument>
               <Home className="h-4 w-4" aria-hidden="true" />
               Overview
             </Link>

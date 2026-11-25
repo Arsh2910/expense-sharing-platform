@@ -54,8 +54,17 @@ it.each<{
   vi.spyOn(notificationsApi, "count").mockImplementation(async () => read ? 0 : 1);
   vi.spyOn(notificationsApi, "list").mockResolvedValue({ items: [item], nextCursor: null });
   const markRead = vi.spyOn(notificationsApi, "markRead").mockImplementation(async () => { read = true; });
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  renderNotifications("/");
+  fireEvent.click(await screen.findByRole("link", { name: "Notifications, 1 unread" }));
+  expect(await screen.findByText(message)).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: button }));
+  expect(await screen.findByText(search)).toBeDefined();
+  expect(markRead).toHaveBeenCalledExactlyOnceWith(item.id, expect.anything());
+  expect(await screen.findByRole("link", { name: /^Notifications$/ })).toBeDefined();
+});
 
+function renderNotifications(path: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={{
@@ -65,7 +74,7 @@ it.each<{
         },
         isAuthenticated: true, isLoading: false, isError: false, error: null, refetchSession: vi.fn(),
       }}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>
           <NotificationBell />
           <Routes>
             <Route path="/" element={<p>Dashboard</p>} />
@@ -77,11 +86,37 @@ it.each<{
       </AuthContext.Provider>
     </QueryClientProvider>,
   );
+}
 
-  fireEvent.click(await screen.findByRole("link", { name: "Notifications, 1 unread" }));
-  expect(await screen.findByText(message)).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: button }));
-  expect(await screen.findByText(search)).toBeDefined();
-  expect(markRead).toHaveBeenCalledExactlyOnceWith(item.id, expect.anything());
-  expect(await screen.findByRole("link", { name: /^Notifications$/ })).toBeDefined();
+it("recovers an unavailable inbox without exposing the request error", async () => {
+  vi.spyOn(notificationsApi, "count").mockResolvedValue(0);
+  vi.spyOn(notificationsApi, "list")
+    .mockRejectedValueOnce(new Error("Internal request details"))
+    .mockResolvedValueOnce({ items: [], nextCursor: null });
+
+  renderNotifications("/notifications");
+  expect(screen.getByRole("status").textContent).toBe("Loading notifications…");
+  const retry = await screen.findByRole("button", { name: "Retry" });
+  expect(screen.queryByText("Internal request details")).toBeNull();
+  fireEvent.click(retry);
+  expect(await screen.findByText("You have no notifications yet.")).toBeDefined();
+});
+
+it("keeps loaded notifications visible when a later page fails and retries that page", async () => {
+  vi.spyOn(notificationsApi, "count").mockResolvedValue(0);
+  const list = vi.spyOn(notificationsApi, "list")
+    .mockResolvedValueOnce({
+      items: [{ ...base, type: "INVITATION", invitationId: "invitation-1" }],
+      nextCursor: "next",
+    })
+    .mockRejectedValueOnce(new Error("Request interrupted"))
+    .mockResolvedValueOnce({ items: [], nextCursor: null });
+
+  renderNotifications("/notifications");
+  fireEvent.click(await screen.findByRole("button", { name: "Load more" }));
+  const retry = await screen.findByRole("button", { name: "Retry loading more" });
+  expect(screen.getByText("You were invited to Weekend Trip")).toBeDefined();
+  fireEvent.click(retry);
+  await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(3));
+  expect(list.mock.calls.map(([cursor]) => cursor)).toEqual([undefined, "next", "next"]);
 });
