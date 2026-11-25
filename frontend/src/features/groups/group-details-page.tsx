@@ -42,6 +42,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast-context";
 import { useAuth } from "@/hooks/use-auth";
+import { CoachMark } from "@/features/onboarding/coach-mark";
+import { useOnboarding } from "@/features/onboarding/onboarding-context";
 import { GroupActivity } from "@/features/activity/group-activity";
 import { BalancesView } from "@/features/balances/components/balances-view";
 import { useGroupBalancesQuery } from "@/features/balances/balances.queries";
@@ -85,6 +87,7 @@ export function GroupDetailsPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const onboarding = useOnboarding();
   const { addToast } = useToast();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,6 +132,18 @@ export function GroupDetailsPage() {
   const balancesQuery = useGroupBalancesQuery(groupId, Boolean(group && user));
   const members = membersQuery.data ?? [];
   const isArchived = Boolean(group?.archivedAt);
+  const expenseDialogOpen = addExpenseOpen || (!isArchived && searchParams.get("newExpense") === "1");
+  const progress = onboarding?.progress;
+  const groupStep = progress && progress.step !== "done" && progress.groupId === groupId
+    ? progress.step : undefined;
+  const showCoach = Boolean(group && !isArchived && !expenseDialogOpen && !detailsDialogOpen &&
+    !settingsOpen && !recordSettlementOpen && !roleDialogOpen && !removeDialogOpen && !leaveDialogOpen);
+
+  React.useEffect(() => {
+    if (groupStep === "balances" && group && requestedTab === "balances" && balancesQuery.isSuccess) {
+      onboarding?.finish();
+    }
+  }, [groupStep, group, requestedTab, balancesQuery.isSuccess, onboarding]);
 
   const isLoadingInitial =
     (groupDetailsQuery.isLoading && !groupDetailsQuery.data) ||
@@ -322,15 +337,23 @@ export function GroupDetailsPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {!isArchived && (
-              <Button
-                onClick={() => {
-                  setSelectedExpenseForEdit(null);
-                  setAddExpenseOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                Add expense
-              </Button>
+              <CoachMark step={showCoach && groupStep === "expense" ? {
+                number: 2,
+                title: "Add your first expense",
+                description: members.length > 1
+                  ? "Enter what was paid, who paid it, and who should share the cost."
+                  : "Enter a cost to get started. To split it with others, invite them to the group first.",
+              } : undefined}>
+                {(descriptionId) => (
+                  <Button aria-describedby={descriptionId} onClick={() => {
+                    setSelectedExpenseForEdit(null);
+                    setAddExpenseOpen(true);
+                  }}>
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    Add expense
+                  </Button>
+                )}
+              </CoachMark>
             )}
 
             <DropdownMenu>
@@ -381,9 +404,17 @@ export function GroupDetailsPage() {
             )}
           </div>
           {activeTab !== "balances" && (
-            <Button asChild variant="outline" size="sm">
-              <Link to="?tab=balances">View balance breakdown</Link>
-            </Button>
+            <CoachMark step={showCoach && groupStep === "balances" ? {
+              number: 3,
+              title: "See who owes whom",
+              description: "Open the balance breakdown to see what each member owes or is owed.",
+            } : undefined}>
+              {(descriptionId) => (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="?tab=balances" aria-describedby={descriptionId}>View balance breakdown</Link>
+                </Button>
+              )}
+            </CoachMark>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-secondary">
@@ -654,7 +685,7 @@ export function GroupDetailsPage() {
             groupId={group.id}
             currency={group.currency}
             members={members}
-            open={addExpenseOpen || (!isArchived && searchParams.get("newExpense") === "1")}
+            open={expenseDialogOpen}
             onOpenChange={(isOpen) => {
               setAddExpenseOpen(isOpen);
               if (!isOpen) {
@@ -670,6 +701,7 @@ export function GroupDetailsPage() {
             }}
             initialExpense={selectedExpenseForEdit}
             onExpenseCreated={(newExpense) => {
+              onboarding?.expenseCreated(group.id);
               setSelectedExpenseForDetails(newExpense);
               setActiveTab("expenses");
             }}

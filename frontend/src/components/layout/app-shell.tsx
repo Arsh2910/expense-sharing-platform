@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OnboardingProvider } from "@/features/onboarding/onboarding";
 import { NotificationBell } from "@/features/notifications/notification-bell";
 import { BrandMark } from "@/features/auth/auth-layout";
 import { useLogoutMutation } from "@/features/auth/auth.queries";
@@ -220,7 +221,7 @@ export function AppShell() {
         </header>
 
         <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pt-7 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9">
-          <Outlet />
+          {user ? <OnboardingProvider key={user.id} user={user}><Outlet /></OnboardingProvider> : <Outlet />}
         </main>
         <MobileNav />
       </div>

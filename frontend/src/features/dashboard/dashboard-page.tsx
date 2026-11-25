@@ -31,11 +31,14 @@ import { RoleBadge } from "@/features/groups/role-badge";
 import { invitationsApi, invitationsKeys } from "@/features/invitations/invitations.api";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils/format";
+import { CoachMark } from "@/features/onboarding/coach-mark";
+import { useOnboarding } from "@/features/onboarding/onboarding-context";
 import { BalanceOverview } from "./balance-overview";
 import { RecentActivity } from "@/features/activity/recent-activity";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const onboarding = useOnboarding();
   const [createOpen, setCreateOpen] = React.useState(false);
   const [expensePickerOpen, setExpensePickerOpen] = React.useState(false);
   const groupsQuery = useMyGroupsQuery();
@@ -49,6 +52,8 @@ export function DashboardPage() {
   ).length ?? 0;
 
   const groups = groupsQuery.data ?? [];
+  const showFirstStep = onboarding?.canStart && groupsQuery.isSuccess && groups.length === 0 &&
+    invitationsQuery.isFetched && !createOpen;
   const recentGroups = groups.slice(0, 5);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] || "there";
 
@@ -117,12 +122,33 @@ export function DashboardPage() {
                 <EmptyState
                   icon={Users}
                   title="Welcome to SplitCircle"
-                  description="You haven't joined or created any groups yet. Create your first group to invite others and organize shared costs."
+                  description={pendingInvitations > 0
+                    ? "You have a group invitation waiting for you."
+                    : "You haven't joined or created any groups yet. Create your first group to invite others and organize shared costs."}
                   action={
-                    <Button onClick={() => setCreateOpen(true)}>
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      Create your first group
-                    </Button>
+                    <CoachMark step={showFirstStep ? pendingInvitations > 0 ? {
+                      number: 1,
+                      title: "Join your group",
+                      description: "Accept your invitation to open the group and see what’s being shared.",
+                    } : {
+                      number: 1,
+                      title: "Start with a group",
+                      description: "Give a trip, household, or other shared budget a place to track expenses.",
+                    } : undefined}>
+                      {(descriptionId) => pendingInvitations > 0 ? (
+                        <Button asChild>
+                          <Link to="/invitations" aria-describedby={descriptionId}>
+                            <Mail className="size-4" aria-hidden="true" />
+                            Review invitations
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button onClick={() => setCreateOpen(true)} aria-describedby={descriptionId}>
+                          <Plus className="size-4" aria-hidden="true" />
+                          Create your first group
+                        </Button>
+                      )}
+                    </CoachMark>
                   }
                 />
               ) : (
@@ -227,7 +253,9 @@ export function DashboardPage() {
           </ul>
         </DialogContent>
       </Dialog>
-      <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen}
+        onGroupCreated={groupsQuery.isSuccess && groups.length === 0 ? onboarding?.enterGroup : undefined}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOnboarding } from "@/features/onboarding/onboarding-context";
 import { CreateGroupDialog } from "@/features/groups/create-group-dialog";
 import { useGroupsBalances } from "@/features/balances/balances.queries";
 import { formatMoneyDisplay } from "@/features/expenses/money";
@@ -24,6 +25,7 @@ export function GroupsListPage() {
   const { user } = useAuth();
   const [createOpen, setCreateOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const onboarding = useOnboarding();
   const groupsQuery = useMyGroupsQuery();
 
   const groups = groupsQuery.data ?? EMPTY_GROUPS;
@@ -177,7 +179,9 @@ export function GroupsListPage() {
         </div>
       )}
 
-      <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen}
+        onGroupCreated={groupsQuery.isSuccess && groups.length === 0 ? onboarding?.enterGroup : undefined}
+      />
     </div>
   );
 }

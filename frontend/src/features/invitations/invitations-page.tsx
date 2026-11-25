@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { groupsKeys } from "@/features/groups/groups.queries";
+import { useOnboarding } from "@/features/onboarding/onboarding-context";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils/format";
@@ -18,6 +19,7 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const onboarding = useOnboarding();
   const queryKey = invitationsKeys.inbox(user?.id ?? "");
   const inbox = useQuery({ queryKey, queryFn: invitationsApi.listMine, enabled: Boolean(user) });
   const response = useMutation({
@@ -27,6 +29,7 @@ export function InvitationsPage({ fromEmail = false }: { fromEmail?: boolean }) 
       void queryClient.invalidateQueries({ queryKey });
       if (action === "accept") {
         void queryClient.invalidateQueries({ queryKey: groupsKeys.all });
+        onboarding?.enterGroup(invitation.groupId);
         navigate(`/groups/${invitation.groupId}`, { replace: true });
       } else if (fromEmail) {
         navigate("/invitations", { replace: true });

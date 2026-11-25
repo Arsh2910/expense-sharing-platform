@@ -34,6 +34,7 @@ export interface CreateGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   navigateOnCreate?: boolean;
+  onGroupCreated?: (groupId: string) => void;
 }
 
 const CUSTOM_CURRENCY_SENTINEL = "__CUSTOM__";
@@ -42,6 +43,7 @@ export function CreateGroupDialog({
   open,
   onOpenChange,
   navigateOnCreate = true,
+  onGroupCreated,
 }: CreateGroupDialogProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -102,6 +104,7 @@ export function CreateGroupDialog({
       });
 
       handleOpenChange(false);
+      onGroupCreated?.(response.data.id);
       if (navigateOnCreate) {
         navigate(`/groups/${response.data.id}`);
       }
