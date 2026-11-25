@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import app from "../../src/app.js";
 import { prisma } from "../../src/lib/prisma.js";
+import { hashToken } from "../../src/modules/auth/token.service.js";
 import { createTestUser } from "../helpers.js";
 
 const frontend = "http://localhost:5173";
@@ -97,7 +98,25 @@ describe("OAuth sign-in", () => {
     expect(await prisma.oAuthIdentity.count({ where: { userId: user.id } })).toBe(0);
     await request(app).get(`${endpoint}/google/link`).expect(401);
 
-    const link = flowFrom(await request(app).get(`${endpoint}/google/link`).set("Authorization", authHeader).expect(302));
+    await request(app).post(`${endpoint}/google/link`).expect(401);
+    const issued = await request(app).post(`${endpoint}/google/link`)
+      .set("Origin", frontend).set("Authorization", authHeader).send({}).expect(200);
+    const ticket = issued.body.data.ticket as string;
+    const ticketKey = { tokenHash: hashToken(ticket) };
+    expect(await prisma.oAuthLinkTicket.findUnique({ where: ticketKey })).toMatchObject({ provider: "google" });
+    const continueLink = (provider: string) => request(app).post(`${endpoint}/${provider}/link/continue`)
+      .set("Origin", frontend).set("Sec-Fetch-Site", "cross-site").type("form").send({ ticket });
+    await continueLink("github").expect(303).expect("Location", `${frontend}/settings?oauth=expired`);
+    expect(await prisma.oAuthLinkTicket.findUnique({ where: ticketKey })).toMatchObject({ provider: "google" });
+
+    // The browser navigation sends the one-time ticket without auth cookies.
+    const results = await Promise.all([continueLink("google"), continueLink("google")]);
+    expect(results.map((result) => result.status)).toEqual([303, 303]);
+    expect(await prisma.oAuthLinkTicket.findUnique({ where: ticketKey })).toBeNull();
+    const started = results.filter((result) => result.headers.location.startsWith("https://accounts.google.com/"));
+    expect(started).toHaveLength(1);
+    expect(results.filter((result) => result.headers.location === `${frontend}/settings?oauth=expired`)).toHaveLength(1);
+    const link = flowFrom(started[0]);
     await request(app).get(`${endpoint}/google/callback`)
       .set("Cookie", link.cookie).query({ state: link.state, code: "link-example" })
       .expect(303).expect("Location", `${frontend}/settings?oauth=linked`);
@@ -111,6 +130,17 @@ describe("OAuth sign-in", () => {
       .expect(303).expect("Location", `${frontend}/oauth/complete`);
     const me = await agent.get("/api/auth/me").expect(200);
     expect(me.body.data).toMatchObject({ id: user.id, email: user.email });
+  });
+
+  it("rejects a link ticket if the issuing session was revoked before navigation", async () => {
+    const { authHeader, session } = await createTestUser();
+    const issued = await request(app).post(`${endpoint}/google/link`)
+      .set("Authorization", authHeader).send({}).expect(200);
+    await prisma.session.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
+
+    await request(app).post(`${endpoint}/google/link/continue`).type("form")
+      .send({ ticket: issued.body.data.ticket })
+      .expect(303).expect("Location", `${frontend}/settings?oauth=expired`);
   });
 
   it("rejects an unverified Google email and can register through GitHub's verified primary email", async () => {

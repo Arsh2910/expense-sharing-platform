@@ -95,9 +95,22 @@ export function OAuthOptions({ returnTo }: { returnTo?: string }) {
 export function ConnectedSignInOptions({ userId }: { userId: string }) {
   const connect = useMutation({
     mutationFn: async (provider: Provider) => {
-      // Refresh an expired access cookie before leaving the app for the provider.
-      await apiRequest("/api/auth/me");
-      window.location.assign(apiUrl(`/api/auth/oauth/${provider}/link`));
+      const path = `/api/auth/oauth/${provider}/link`;
+      const { data } = await apiRequest<{ data: { ticket: string } }>(path, { method: "POST", body: {} });
+
+      // A top-level POST lets the API set the OAuth flow cookie in navigation
+      // context while keeping the one-time ticket out of the URL.
+      const form = document.createElement("form");
+      form.hidden = true;
+      form.method = "post";
+      form.action = apiUrl(`${path}/continue`);
+      const ticket = document.createElement("input");
+      ticket.type = "hidden";
+      ticket.name = "ticket";
+      ticket.value = data.ticket;
+      form.append(ticket);
+      document.body.append(form);
+      form.submit();
     },
   });
   const { data } = useQuery({

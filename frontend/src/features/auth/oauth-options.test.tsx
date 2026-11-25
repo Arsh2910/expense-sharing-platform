@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { apiRequest } from "@/lib/api/client";
-import { OAuthCompletePage, OAuthNotice, OAuthOptions } from "./oauth-options";
+import { ConnectedSignInOptions, OAuthCompletePage, OAuthNotice, OAuthOptions } from "./oauth-options";
 
 vi.mock("@/lib/api/client", () => ({
   apiRequest: vi.fn(),
@@ -46,6 +46,30 @@ it("links to email registration when Google cannot establish ownership of the ad
     </MemoryRouter>,
   );
   expect(screen.getByRole("link", { name: "Create an account with email" }).getAttribute("href")).toBe("/register");
+});
+
+it("starts linking from the app session and submits the ticket in a navigation form", async () => {
+  vi.mocked(apiRequest)
+    .mockResolvedValueOnce({ data: { hasPassword: true, providers: [{ provider: "google", linked: false }] } })
+    .mockResolvedValueOnce({ data: { ticket: "one-time-ticket" } });
+  const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => {});
+  try {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ConnectedSignInOptions userId="user" />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Connect Google" }));
+    await waitFor(() => expect(submit).toHaveBeenCalledOnce());
+    expect(apiRequest).toHaveBeenCalledWith("/api/auth/oauth/google/link", { method: "POST", body: {} });
+    const form = submit.mock.contexts[0] as HTMLFormElement;
+    expect(form.getAttribute("action")).toBe("/api/auth/oauth/google/link/continue");
+    expect(form.method).toBe("post");
+    expect(new FormData(form).get("ticket")).toBe("one-time-ticket");
+    form.remove();
+  } finally {
+    submit.mockRestore();
+  }
 });
 
 function Destination() {

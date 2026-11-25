@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router, urlencoded } from "express";
 import { requestLimits } from "../../middleware/rate-limit.middleware.js";
 import { register, login, refresh, logout, profile, editProfile, password, email, verifyEmail, removeAccount, forgotPassword, resetPasswordController } from "./auth.controller.js";
 import { authenticate } from "./auth.middleware.js";
-import { listOAuthLinks, listOAuthProviders, oauthCallback, oauthLinkStart, oauthLoginStart } from "./oauth.controller.js";
+import { continueOAuthLink, issueOAuthLinkTicket, listOAuthLinks, listOAuthProviders, oauthCallback, oauthLinkStart, oauthLoginStart } from "./oauth.controller.js";
 
 const router = Router();
 
@@ -17,6 +17,8 @@ router.get("/oauth/providers", listOAuthProviders);
 router.get("/oauth/links", authenticate, listOAuthLinks);
 router.get("/oauth/:provider/start", requestLimits.oauthStart, oauthLoginStart);
 router.get("/oauth/:provider/link", authenticate, requestLimits.oauthStart, oauthLinkStart);
+router.post("/oauth/:provider/link", authenticate, requestLimits.oauthStart, issueOAuthLinkTicket);
+router.post("/oauth/:provider/link/continue", requestLimits.oauthCallback, urlencoded({ extended: false, limit: "2kb" }), continueOAuthLink);
 router.get("/oauth/:provider/callback", requestLimits.oauthCallback, oauthCallback);
 router.get("/me", authenticate, profile);
 router.patch("/me", authenticate, editProfile);

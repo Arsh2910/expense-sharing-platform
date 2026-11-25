@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { setAuthCookies } from "./auth.controller.js";
+import { consumeOAuthLinkTicket, createOAuthLinkTicket } from "./oauth-link-ticket.service.js";
 import {
   authorizationUrl, fetchOAuthProfile, getOAuthConfig, OAuthError, oauthProviders,
   oauthProviderSchema, type OAuthProvider,
@@ -53,28 +54,62 @@ function redirectToApp(res: Response, path: "/oauth/complete" | "/login" | "/set
   res.redirect(303, target.href);
 }
 
-function startOAuth(link: boolean): RequestHandler {
-  return (req, res) => {
-    const provider = oauthProviderSchema.safeParse(req.params.provider);
-    if (!provider.success || !getOAuthConfig(provider.data)) {
-      redirectToApp(res, link ? "/settings" : "/login", "unavailable");
-      return;
-    }
-    const state = randomBytes(32).toString("base64url");
-    const verifier = randomBytes(32).toString("base64url");
-    const signed = jwt.sign(
-      { provider: provider.data, state, verifier, ...(link ? { actor: req.auth! } : {}) },
-      signingKey(),
-      { algorithm: "HS256", audience: "splitcircle:oauth", expiresIn: stateLifetimeSeconds },
-    );
-    const { name, options } = flowCookie(provider.data);
-    res.cookie(name, signed, { ...options, maxAge: stateLifetimeSeconds * 1000 });
-    res.redirect(302, authorizationUrl(provider.data, state, verifier));
-  };
+function startOAuth(res: Response, provider: OAuthProvider, actor?: Request["auth"], status: 302 | 303 = 302) {
+  const state = randomBytes(32).toString("base64url");
+  const verifier = randomBytes(32).toString("base64url");
+  const signed = jwt.sign(
+    { provider, state, verifier, ...(actor ? { actor } : {}) },
+    signingKey(),
+    { algorithm: "HS256", audience: "splitcircle:oauth", expiresIn: stateLifetimeSeconds },
+  );
+  const { name, options } = flowCookie(provider);
+  res.cookie(name, signed, { ...options, maxAge: stateLifetimeSeconds * 1000 });
+  res.redirect(status, authorizationUrl(provider, state, verifier));
 }
 
-export const oauthLoginStart = startOAuth(false);
-export const oauthLinkStart = startOAuth(true);
+export const oauthLoginStart: RequestHandler = (req, res) => {
+  const provider = oauthProviderSchema.safeParse(req.params.provider);
+  if (!provider.success || !getOAuthConfig(provider.data)) {
+    redirectToApp(res, "/login", "unavailable");
+    return;
+  }
+  startOAuth(res, provider.data);
+};
+
+// Handles OAuth links from older frontend builds.
+export const oauthLinkStart: RequestHandler = (req, res) => {
+  const provider = oauthProviderSchema.safeParse(req.params.provider);
+  if (!provider.success || !getOAuthConfig(provider.data)) {
+    redirectToApp(res, "/settings", "unavailable");
+    return;
+  }
+  startOAuth(res, provider.data, req.auth!);
+};
+
+export const issueOAuthLinkTicket: RequestHandler = async (req, res) => {
+  const provider = oauthProviderSchema.safeParse(req.params.provider);
+  if (!provider.success || !getOAuthConfig(provider.data)) {
+    res.status(404).json({ message: "This sign-in provider is unavailable." });
+    return;
+  }
+  const ticket = await createOAuthLinkTicket(provider.data, req.auth!.sessionId);
+  res.json({ data: { ticket } });
+};
+
+export const continueOAuthLink: RequestHandler = async (req, res) => {
+  const provider = oauthProviderSchema.safeParse(req.params.provider);
+  const ticket = secretPart.safeParse(req.body?.ticket);
+  if (!provider.success || !getOAuthConfig(provider.data)) {
+    redirectToApp(res, "/settings", "unavailable");
+    return;
+  }
+  const actor = ticket.success && await consumeOAuthLinkTicket(provider.data, ticket.data);
+  if (!actor) {
+    redirectToApp(res, "/settings", "expired");
+    return;
+  }
+  startOAuth(res, provider.data, actor, 303);
+};
 
 export const listOAuthProviders: RequestHandler = (_req, res) => {
   res.json({ data: oauthProviders.filter((provider) => getOAuthConfig(provider)) });

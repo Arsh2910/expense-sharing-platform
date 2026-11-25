@@ -64,6 +64,8 @@ The API exchanges the authorization code with PKCE, then uses the provider accou
 
 Social sign-in creates the same SplitCircle session cookies as password login. A browser that blocks cross-site cookies might reject sessions on the separate Vercel and Render domains. Use a same-site deployment if that affects your users. To recover password sign-in for an account created through OAuth, use the existing password-reset flow.
 
+Deploy the `oauth_link_tickets` migration and API before deploying the Settings change. **Connect Google** and **Connect GitHub** start with an authenticated API request. The browser then submits a single-use ticket in a navigation form so the redirect can continue even if the browser withholds session cookies on that navigation. Use the callback URLs and credential settings in the table above.
+
 ## Email pipeline
 
 ```text
