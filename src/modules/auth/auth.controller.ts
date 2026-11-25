@@ -37,7 +37,7 @@ function authCookie(name: string, value: string, maxAge: number) {
   return `${name}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=${sameSite}${secure}`;
 }
 
-function setAuthCookies(
+export function setAuthCookies(
   res: Parameters<RequestHandler>[1],
   accessToken: string,
   refreshToken: string,

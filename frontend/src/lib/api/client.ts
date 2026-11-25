@@ -4,6 +4,10 @@ import type { ApiErrorPayload } from "@/types/api";
 const RAW_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const API_BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
 
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
 const AUTH_NO_REFRESH_PATHS = new Set([
   "/api/auth/login",
   "/api/auth/register",
@@ -48,7 +52,7 @@ export async function refreshAuthSession(): Promise<boolean> {
 
   inflightRefresh = (async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      const response = await fetch(apiUrl("/api/auth/refresh"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -95,7 +99,7 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const method = options.method ?? "GET";
-  const url = `${API_BASE_URL}${path}`;
+  const url = apiUrl(path);
 
   const execute = async (): Promise<Response> => {
     try {

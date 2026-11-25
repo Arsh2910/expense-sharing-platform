@@ -9,6 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AuthLayout } from "@/features/auth/auth-layout";
+import { OAuthNotice, OAuthOptions } from "@/features/auth/oauth-options";
 import { useLoginMutation } from "@/features/auth/auth.queries";
 import {
   loginFormSchema,
@@ -79,6 +80,7 @@ export function LoginPage() {
           New to SplitCircle?{" "}
           <Link
             to="/register"
+            state={{ from: state?.from }}
             className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
           >
             Create an account
@@ -87,6 +89,7 @@ export function LoginPage() {
       }
     >
       <div className="space-y-4">
+        <OAuthNotice />
         {state?.sessionExpired && (
           <Alert variant="warning" title="Session expired">
             Your session ended or was signed out. Please sign in again to
@@ -195,7 +198,7 @@ export function LoginPage() {
             Sign in
           </Button>
         </form>
-
+        <OAuthOptions returnTo={state?.from} />
       </div>
     </AuthLayout>
   );

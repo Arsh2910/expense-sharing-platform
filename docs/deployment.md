@@ -48,6 +48,22 @@ The API must allow the Vercel origin through `CORS_ALLOWED_ORIGINS`. Production 
 
 Apply the expense calendar migration and release the API's `X-Client-Time-Zone` support before serving a frontend build that sends that header. Expense and settlement forms use local calendar dates. The API checks them in the supplied time zone and uses UTC for older clients. The PostgreSQL expense trigger uses the same transaction calendar without changing the session time zone.
 
+## OAuth sign-in
+
+Apply the `oauth_identities` migration and deploy the API and frontend. Configure each provider you plan to enable in Render's **API service** environment. Its credentials stay on the API. Set `OAUTH_API_ORIGIN` to the public HTTPS API origin and keep `APP_BASE_URL` set to the canonical frontend origin. For local testing, use `http://localhost:5000` as the API origin and open the frontend on `localhost` as well.
+
+| Provider | App credentials in Render | Registered callback path appended to `OAUTH_API_ORIGIN` |
+| --- | --- | --- |
+| Google | `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` | `/api/auth/oauth/google/callback` |
+| GitHub | `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET` | `/api/auth/oauth/github/callback` |
+
+- Create a **Web application** client in Google Auth Platform and register the exact callback as an authorized redirect URI. Configure consent and test users as applicable. [Google web-server setup](https://developers.google.com/identity/protocols/oauth2/web-server)
+- Create a **GitHub OAuth App** with the frontend as its homepage and the exact API callback as its authorization callback URL. Use a separate GitHub OAuth App for local development if you need both environments. [GitHub OAuth setup](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+
+The API exchanges the authorization code with PKCE, then uses the provider account ID as the persistent sign-in identity. New Google accounts can skip local verification when Google is authoritative for the email. A Google account using a third-party email can register through SplitCircle's email flow and connect Google afterward. GitHub sign-up requires a verified primary email. An existing user signs in with their current method and opens **Account settings → Sign-in methods** to connect a provider using their verified SplitCircle address. A matching email by itself never links an existing account. [Google account email verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
+
+Social sign-in creates the same SplitCircle session cookies as password login. A browser that blocks cross-site cookies might reject sessions on the separate Vercel and Render domains. Use a same-site deployment if that affects your users. To recover password sign-in for an account created through OAuth, use the existing password-reset flow.
+
 ## Email pipeline
 
 ```text

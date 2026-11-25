@@ -55,6 +55,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils/format";
+import { ConnectedSignInOptions, OAuthNotice } from "@/features/auth/oauth-options";
 
 export function AccountSettingsPage() {
   const { user } = useAuth();
@@ -516,6 +517,9 @@ export function AccountSettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        <OAuthNotice />
+        <ConnectedSignInOptions userId={user.id} />
 
         {/* Session Management */}
         <Card>

@@ -12,6 +12,11 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().trim().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().trim().min(1).optional(),
   PASSWORD_RESET_OUTBOX_KEY: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+  OAUTH_API_ORIGIN: z.url({ protocol: /^https?$/ }).optional(),
+  GOOGLE_OAUTH_CLIENT_ID: z.string().trim().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().trim().min(1).optional(),
+  GITHUB_OAUTH_CLIENT_ID: z.string().trim().min(1).optional(),
+  GITHUB_OAUTH_CLIENT_SECRET: z.string().trim().min(1).optional(),
 });
 
 export function browserOrigins(env: NodeJS.ProcessEnv = process.env) {
@@ -60,7 +65,26 @@ export function validateEnvironment(service: "api" | "email-worker", env: NodeJS
   }
   const config = parsed.data;
   const required = new Set<keyof typeof config>();
-  if (service === "api") required.add("JWT_ACCESS_SECRET");
+  if (service === "api") {
+    required.add("JWT_ACCESS_SECRET");
+    for (const [id, secret] of [
+      ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"],
+      ["GITHUB_OAUTH_CLIENT_ID", "GITHUB_OAUTH_CLIENT_SECRET"],
+    ] as const) {
+      if (config[id] || config[secret]) {
+        required.add(id);
+        required.add(secret);
+        required.add("OAUTH_API_ORIGIN");
+        required.add("APP_BASE_URL");
+      }
+    }
+    if (config.OAUTH_API_ORIGIN) {
+      const url = new URL(config.OAUTH_API_ORIGIN);
+      if (url.href !== `${url.origin}/` || (config.NODE_ENV === "production" && url.protocol !== "https:")) {
+        throw new Error("OAUTH_API_ORIGIN must be an HTTP origin (HTTPS in production)");
+      }
+    }
+  }
   if (service === "email-worker") {
     required.add("REDIS_URL");
     required.add("RESEND_API_KEY");

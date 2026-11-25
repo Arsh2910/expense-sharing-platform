@@ -9,7 +9,7 @@ A full-stack expense-sharing application for friends, roommates, families, and t
 
 ## What it does
 
-- Authenticated accounts with email verification, refresh-token rotation, password reset, password change, and account profile updates.
+- Authenticated accounts with email/password and optional Google and GitHub sign-in, refresh-token rotation, password recovery, and profile updates.
 - Groups with owner, admin, and member roles.
 - Consent-based membership. A person becomes a member only after accepting an invitation. There is no direct add-by-email path.
 - Expenses with multiple payers and equal, exact, or percentage splits.
@@ -117,6 +117,8 @@ Copy `.env.example` and fill in the values. Never commit `.env` files or real ke
 | `RESEND_FROM_EMAIL` | Worker | Verified sender, for example `SplitCircle <noreply@mail.example.com>` |
 
 In production, `PASSWORD_RESET_OUTBOX_KEY`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` must be configured on the worker as well as the API where applicable. The API and worker must share the same database, Redis instance, frontend URL, and outbox encryption key.
+
+Configure Google and GitHub independently on the API. The frontend shows only configured providers. See [OAuth sign-in setup](docs/deployment.md#oauth-sign-in).
 
 ## Commands
 

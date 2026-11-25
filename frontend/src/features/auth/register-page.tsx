@@ -2,12 +2,13 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { AuthLayout } from "@/features/auth/auth-layout";
+import { OAuthOptions } from "@/features/auth/oauth-options";
 import { useRegisterMutation } from "@/features/auth/auth.queries";
 import {
   registerFormSchema,
@@ -17,6 +18,7 @@ import { getErrorMessage } from "@/lib/api/errors";
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const returnTo = (useLocation().state as { from?: string } | null)?.from;
   const [showPassword, setShowPassword] = React.useState(false);
   const registerMutation = useRegisterMutation();
 
@@ -67,6 +69,7 @@ export function RegisterPage() {
           Already have an account?{" "}
           <Link
             to="/login"
+            state={{ from: returnTo }}
             className="font-medium text-accent hover:text-accent-hover underline underline-offset-4"
           >
             Sign in
@@ -171,6 +174,7 @@ export function RegisterPage() {
             Create account
           </Button>
         </form>
+        <OAuthOptions returnTo={returnTo} />
       </div>
     </AuthLayout>
   );

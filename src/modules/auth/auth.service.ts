@@ -44,7 +44,7 @@ export class AuthServiceError extends Error {
 
 const passwordResetLifetimeMs = 30 * 60_000;
 
-async function lockAuthUser(tx: Prisma.TransactionClient, userId: string) {
+export async function lockAuthUser(tx: Prisma.TransactionClient, userId: string) {
   await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
 }
 
@@ -207,7 +207,7 @@ export const registrationVerification: RegistrationVerification = {
   },
 };
 
-async function createSession(
+export async function createSession(
   tx: Prisma.TransactionClient,
   userId: string,
   meta?: { userAgent?: string; ipAddress?: string },
@@ -255,7 +255,7 @@ export async function loginUser(
 ) {
   const user = await prisma.user.findFirst({ where: { email: input.email } });
   const passwordMatches = await bcrypt.compare(input.password, user?.passwordHash ?? dummyLoginHash);
-  if (!user || !passwordMatches || user.status !== "ACTIVE" || user.deletedAt)
+  if (!user?.passwordHash || !passwordMatches || user.status !== "ACTIVE" || user.deletedAt)
     throw new AuthServiceError(
       "Invalid email or password",
       "INVALID_CREDENTIALS",
@@ -409,7 +409,7 @@ export async function changePassword(
     where: { id: userId },
     select: { passwordHash: true },
   });
-  if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash)))
+  if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash)))
     throw new AuthServiceError(
       "Current password is incorrect",
       "PASSWORD_INVALID",
@@ -438,7 +438,7 @@ export async function changeEmail(
     where: { id: userId },
     select: { passwordHash: true },
   });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash)))
+  if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash)))
     throw new AuthServiceError("Password is incorrect", "PASSWORD_INVALID");
   try {
     return await prisma.$transaction(async (tx) => {
@@ -475,7 +475,7 @@ export async function deleteAccount(
     );
   }
 
-  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+  if (!user.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
     throw new AuthServiceError(
       "Current password is incorrect",
       "PASSWORD_INVALID",

@@ -70,7 +70,7 @@ model User {
   email           String     @db.VarChar(255)
   username        String?    @unique @db.VarChar(30)
   displayName     String     @map("display_name") @db.VarChar(100)
-  passwordHash    String     @map("password_hash") @db.VarChar(255)
+  passwordHash    String?    @map("password_hash") @db.VarChar(255)
   status          UserStatus @default(ACTIVE)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
   pendingEmail    String?    @map("pending_email") @db.VarChar(255)
@@ -81,6 +81,7 @@ model User {
   memberships             GroupMembership[]
   sessions                Session[]
   verificationTokens      VerificationToken[]
+  oauthIdentities         OAuthIdentity[]
   createdExpenses         Expense[]           @relation("ExpenseCreatedBy")
   deletedExpenses         Expense[]           @relation("ExpenseDeletedBy")
   expensePayerAllocations ExpensePayer[]
@@ -96,6 +97,18 @@ model User {
   receivedInvitations     GroupInvitation[] @relation("InvitationInvitedUser")
 
   @@map("users")
+}
+
+model OAuthIdentity {
+  provider  String   @db.VarChar(16)
+  subject   String   @db.VarChar(255)
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, subject])
+  @@unique([userId, provider])
+  @@map("oauth_identities")
 }
 
 model Session {

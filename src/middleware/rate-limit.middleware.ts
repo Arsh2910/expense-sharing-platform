@@ -102,6 +102,8 @@ const store = apiStore();
 export const requestLimits = {
   register: rateLimit("register", [limit("ip", 15, hour, ip), limit("account", 5, hour, account)], store),
   login: rateLimit("login", [limit("ip", 30, 15 * minute, ip), limit("account", 10, 15 * minute, account)], store),
+  oauthStart: rateLimit("oauth-start", [limit("ip", 30, 15 * minute, ip)], store),
+  oauthCallback: rateLimit("oauth-callback", [limit("ip", 60, 15 * minute, ip)], store),
   forgotPassword: rateLimit("forgot-password", [limit("ip", 30, hour, ip), limit("account", 5, hour, account)], store),
   resetPassword: rateLimit("reset-password", [limit("ip", 30, 15 * minute, ip), limit("token", 5, 15 * minute, token)], store),
   verifyEmail: rateLimit("verify-email", [limit("ip", 40, 15 * minute, ip), limit("token", 8, 15 * minute, token)], store),

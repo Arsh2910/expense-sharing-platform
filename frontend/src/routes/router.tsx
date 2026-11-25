@@ -5,6 +5,7 @@ import { RouteErrorPage } from "@/components/layout/route-error-page";
 import { ActivityPage } from "@/features/activity/activity-page";
 import { ForgotPasswordPage, ResetPasswordPage } from "@/features/auth/password-reset-pages";
 import { LoginPage } from "@/features/auth/login-page";
+import { OAuthCompletePage } from "@/features/auth/oauth-options";
 import { RegisterPage } from "@/features/auth/register-page";
 import { VerifyEmailPage } from "@/features/auth/verify-email-page";
 import { VerifyPendingPage } from "@/features/auth/verify-pending-page";
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
             element: <AppShell />,
             children: [
               { path: "/", element: <DashboardPage /> },
+              { path: "/oauth/complete", element: <OAuthCompletePage /> },
               { path: "/groups", element: <GroupsListPage /> },
               { path: "/groups/:groupId", element: <GroupDetailsPage /> },
               { path: "/notifications", element: <NotificationsPage /> },
