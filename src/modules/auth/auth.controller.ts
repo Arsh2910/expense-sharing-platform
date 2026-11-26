@@ -235,7 +235,9 @@ export const verifyEmail: RequestHandler = async (req, res, next) => {
     res.json({ message: "Email verified" });
   } catch (error) {
     if (error instanceof AuthServiceError) {
-      res.status(400).json({ message: error.message });
+      res
+        .status(error.code === "EMAIL_ALREADY_EXISTS" ? 409 : 400)
+        .json({ message: error.message });
       return;
     }
     next(error);

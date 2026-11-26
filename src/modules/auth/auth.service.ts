@@ -20,6 +20,7 @@ const publicUser = {
   createdAt: true,
 } as const;
 const sessionDays = 30;
+const emailChangeConflictMessage = "This email address is already in use. Choose a different email address.";
 // Run the same bcrypt work for an unknown email as for a known account.
 const dummyLoginHash = "$2b$12$FE0HDp0zyxo.QeskACBs0.lbK2g/HUqZ8O0DONiqeYSU1qw3dhyX2";
 
@@ -164,12 +165,12 @@ export const registrationVerification: RegistrationVerification = {
         "Invalid or expired verification token",
         "TOKEN_INVALID",
       );
+    const newEmail = record.purpose === "EMAIL_CHANGE" ? record.user.pendingEmail : null;
+    if (record.purpose === "EMAIL_CHANGE" && !newEmail) {
+      throw new AuthServiceError("Invalid or expired verification token", "TOKEN_INVALID");
+    }
     await prisma.$transaction(async (tx) => {
       const consumedAt = new Date();
-      const newEmail = record.purpose === "EMAIL_CHANGE" ? record.user.pendingEmail : null;
-      if (record.purpose === "EMAIL_CHANGE" && !newEmail) {
-        throw new AuthServiceError("Invalid or expired verification token", "TOKEN_INVALID");
-      }
       const updated = await tx.user.updateMany({
         where: {
           id: record.userId,
@@ -201,7 +202,13 @@ export const registrationVerification: RegistrationVerification = {
           "TOKEN_INVALID",
         );
       }
-      if (record.purpose === "EMAIL_CHANGE") await invalidatePasswordResets(tx, record.userId, consumedAt);
+      if (newEmail) await invalidatePasswordResets(tx, record.userId, consumedAt);
+    }).catch((error: unknown) => {
+      // The address may have been claimed after the verification was requested.
+      if (newEmail && isCode(error, "P2002")) {
+        throw new AuthServiceError(emailChangeConflictMessage, "EMAIL_ALREADY_EXISTS");
+      }
+      throw error;
     });
     return record.userId;
   },
@@ -440,24 +447,23 @@ export async function changeEmail(
   });
   if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash)))
     throw new AuthServiceError("Password is incorrect", "PASSWORD_INVALID");
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const user = await tx.user.update({
-        where: { id: userId },
-        data: { pendingEmail: email },
-        select: publicUser,
-      });
-      await queueVerification(tx, user.id, email, "EMAIL_CHANGE");
-      return user;
+  return prisma.$transaction(async (tx) => {
+    // Use the same case-insensitive comparison as the unique index on users.
+    const [result] = await tx.$queryRaw<{ taken: boolean }[]>`
+      SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(${email})) AS taken
+    `;
+    if (result.taken) {
+      throw new AuthServiceError(emailChangeConflictMessage, "EMAIL_ALREADY_EXISTS");
+    }
+
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: { pendingEmail: email },
+      select: publicUser,
     });
-  } catch (error) {
-    if (isCode(error, "P2002"))
-      throw new AuthServiceError(
-        "An account with this email already exists",
-        "EMAIL_ALREADY_EXISTS",
-      );
-    throw error;
-  }
+    await queueVerification(tx, userId, email, "EMAIL_CHANGE");
+    return updated;
+  });
 }
 export async function deleteAccount(
   userId: string,
