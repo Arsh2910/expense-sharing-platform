@@ -3,22 +3,13 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function BrandMark({ className = "h-8 w-8" }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <img
+      src={import.meta.env.BASE_URL + "favicon.svg"}
+      width={32}
+      height={32}
+      alt=""
       className={className}
-      aria-hidden="true"
-    >
-      <rect width="32" height="32" rx="8" fill="#0F766E" />
-      <path
-        d="M9.5 11.5H22.5M9.5 16H18.5M9.5 20.5H15.5"
-        stroke="white"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <circle cx="21" cy="20.5" r="2.2" fill="#99F6E4" />
-    </svg>
+    />
   );
 }
 
