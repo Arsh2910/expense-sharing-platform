@@ -36,21 +36,15 @@ For the current Vercel frontend, `APP_BASE_URL` and `CORS_ALLOWED_ORIGINS` must 
 
 ## Vercel configuration
 
-Set this variable in the Vercel **Production** environment, then redeploy:
+The Vercel project uses `frontend` as its root directory. Its [routing configuration](../frontend/vercel.json) builds the app with an empty `VITE_API_BASE_URL` and rewrites `/api/*` requests to Render. The browser uses the Vercel URL for app requests and session cookies. Use this routing configuration's build command if the project has a dashboard override.
 
-```text
-VITE_API_BASE_URL=https://your-api.onrender.com
-```
-
-Vite replaces `VITE_*` values at build time. Editing the variable without a new deployment does not change the already-built JavaScript bundle.
-
-The API must allow the Vercel origin through `CORS_ALLOWED_ORIGINS`. Production auth cookies use `Secure` and `SameSite=None` so the browser can send them from the Vercel origin to the Render API.
+The Render API accepts the canonical frontend origin through `APP_BASE_URL` and `CORS_ALLOWED_ORIGINS`. Keep those settings on the Vercel production origin. The secure session cookies are scoped to the host the browser calls. Users moving from direct Render requests will sign in again to establish a session on the frontend host.
 
 Apply the expense calendar migration and release the API's `X-Client-Time-Zone` support before serving a frontend build that sends that header. Expense and settlement forms use local calendar dates. The API checks them in the supplied time zone and uses UTC for older clients. The PostgreSQL expense trigger uses the same transaction calendar without changing the session time zone.
 
 ## OAuth sign-in
 
-Apply the `oauth_identities` migration and deploy the API and frontend. Configure each provider you plan to enable in Render's **API service** environment. Its credentials stay on the API. Set `OAUTH_API_ORIGIN` to the public HTTPS API origin and keep `APP_BASE_URL` set to the canonical frontend origin. For local testing, use `http://localhost:5000` as the API origin and open the frontend on `localhost` as well.
+Apply the `oauth_identities` migration before enabling OAuth. Provider credentials stay in Render's **API service** environment. For the Vercel deployment, use `OAUTH_API_ORIGIN=https://splitcircle12.vercel.app` and keep `APP_BASE_URL` set to that same origin. Both the OAuth start endpoint and the provider callback pass through the Vercel rewrite. For local development through Vite's proxy, use `OAUTH_API_ORIGIN=http://localhost:5173` and open the frontend at that origin.
 
 | Provider | App credentials in Render | Registered callback path appended to `OAUTH_API_ORIGIN` |
 | --- | --- | --- |
@@ -62,7 +56,13 @@ Apply the `oauth_identities` migration and deploy the API and frontend. Configur
 
 The API exchanges the authorization code with PKCE, then uses the provider account ID as the persistent sign-in identity. New Google accounts can skip local verification when Google is authoritative for the email. A Google account using a third-party email can register through SplitCircle's email flow and connect Google afterward. GitHub sign-up requires a verified primary email. An existing user signs in with their current method and opens **Account settings → Sign-in methods** to connect a provider using their verified SplitCircle address. A matching email by itself never links an existing account. [Google account email verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
 
-Social sign-in creates the same SplitCircle session cookies as password login. A browser that blocks cross-site cookies might reject sessions on the separate Vercel and Render domains. Use a same-site deployment if that affects your users. To recover password sign-in for an account created through OAuth, use the existing password-reset flow.
+### Move an existing deployment to the Vercel callback
+
+1. Register `https://splitcircle12.vercel.app/api/auth/oauth/google/callback` in the existing Google OAuth client. For GitHub, register `https://splitcircle12.vercel.app/api/auth/oauth/github/callback` in the existing OAuth app if enabled. Keep the old redirect URI during the transition where the provider supports multiple URIs.
+2. Release the Vercel rewrite and update Render's `OAUTH_API_ORIGIN` in the same deployment window. Register the provider URLs before switching. Open the canonical production URL for this check.
+3. Sign in with Google while third-party cookies are blocked. Confirm that the callback and `GET /api/auth/me` use the Vercel host and that the session survives a reload. Verify password sign-in and GitHub sign-in if enabled.
+
+Social and password sign-in use the same session cookies. To recover password sign-in for an account created through OAuth, use the existing password-reset flow.
 
 Deploy the `oauth_link_tickets` migration and API before deploying the Settings change. **Connect Google** and **Connect GitHub** start with an authenticated API request. The browser then submits a single-use ticket in a navigation form so the redirect can continue even if the browser withholds session cookies on that navigation. Use the callback URLs and credential settings in the table above.
 

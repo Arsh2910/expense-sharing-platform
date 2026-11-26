@@ -14,7 +14,7 @@ Web client for the Expense Sharing Platform built with React, TypeScript, Vite, 
    cp .env.example .env
    ```
    - Leave `VITE_API_BASE_URL` empty in local development to use the built-in Vite proxy (`/api` and `/health` -> `http://localhost:5000`). This keeps `HttpOnly` authentication cookies same-origin during development.
-   - Set `VITE_API_BASE_URL` (e.g. `https://api.example.com`) when deploying independently across origins. If using a separate origin, the backend must enable CORS with `credentials: true` and an explicit origin allowlist.
+   - The Vercel build uses relative `/api` URLs and forwards them to Render. For a separate-host build, an explicit `VITE_API_BASE_URL` requires credentialed CORS and browsers that allow the API cookies. See [Vercel configuration](../docs/deployment.md#vercel-configuration).
 
 3. Start the development server:
    ```bash
