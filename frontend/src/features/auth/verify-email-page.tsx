@@ -158,7 +158,7 @@ export function VerifyEmailPage() {
           <FormField
             id="verify-token"
             label="Verification token"
-            hint="Paste the token from your verification email."
+            hint="Paste the token from your verification email. If you can’t find the email, check your spam or junk folder."
             error={errors.token?.message}
             required
           >

@@ -39,7 +39,12 @@ export function ForgotPasswordPage() {
     <AuthLayout title="Forgot your password?" subtitle="Request a link to choose a new password."
       footer={<Link to="/login" className="underline">Back to sign in</Link>}>
       <form onSubmit={submit} className="space-y-4">
-        {message && <Alert variant="success">{message}</Alert>}
+        {message && (
+          <Alert variant="success">
+            <p>{message}</p>
+            <p className="mt-1">If you don’t see the email, check your spam or junk folder.</p>
+          </Alert>
+        )}
         {error && <Alert variant="error">{error}</Alert>}
         <FormField id="reset-email" label="Email address" required>
           <Input id="reset-email" type="email" autoComplete="email" maxLength={255} required

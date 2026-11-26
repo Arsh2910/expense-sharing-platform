@@ -37,17 +37,17 @@ export function VerifyPendingPage() {
             <p className="font-medium text-ink">
               {state?.email ? (
                 <>
-                  Verification sent to{" "}
-                  <span className="font-semibold">{state.email}</span>
+                  Check <span className="font-semibold">{state.email}</span> for a verification link
                 </>
               ) : (
                 "Check your inbox for a verification link"
               )}
             </p>
             <p className="text-ink-secondary leading-relaxed">
-              Open the verification link from your email, or paste the
-              verification token directly on the verification page. Tokens
-              remain valid for 24 hours.
+              Open the link or enter the token from the email. It expires in 24 hours.
+            </p>
+            <p className="text-ink-secondary leading-relaxed">
+              If you don’t see the email, check your spam or junk folder.
             </p>
           </div>
         </div>

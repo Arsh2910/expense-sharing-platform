@@ -149,7 +149,7 @@ export function AccountSettingsPage() {
       emailForm.reset({ email: "", password: "" });
       toast({
         title: "Verification email requested",
-        description: `Check ${targetEmail} to confirm your new email address.`,
+        description: `Check the inbox or spam folder for ${targetEmail}.`,
         variant: "success",
       });
     } catch {
@@ -354,10 +354,11 @@ export function AccountSettingsPage() {
             >
               {pendingEmailNotice && (
                 <Alert variant="success" title="Verification pending">
-                  We sent a verification link to{" "}
-                  <span className="font-medium">{pendingEmailNotice}</span>. Your
-                  current email ({user.email}) remains active until you verify
-                  the new address.
+                  <p>
+                    Check <span className="font-medium">{pendingEmailNotice}</span> for a verification link.
+                    If you don’t see it, check your spam or junk folder.
+                  </p>
+                  <p className="mt-1">Keep using {user.email} until you verify the new address.</p>
                 </Alert>
               )}
 

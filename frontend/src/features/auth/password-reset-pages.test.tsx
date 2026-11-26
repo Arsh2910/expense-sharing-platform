@@ -33,6 +33,7 @@ it("shows the generic response from forgot password", async () => {
   fireEvent.change(screen.getByLabelText(/Email address/), { target: { value: "user@example.test" } });
   fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
   expect(await screen.findByText(/If an eligible account exists/)).toBeDefined();
+  expect(screen.getByText(/check your spam or junk folder/i)).toBeDefined();
   expect(api).toHaveBeenCalledWith("/api/auth/forgot-password", expect.objectContaining({
     body: { email: "user@example.test" },
   }));

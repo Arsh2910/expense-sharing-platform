@@ -116,21 +116,24 @@ export function LoginPage() {
           <Alert variant="error">
             <p>{serverError}</p>
             {isUnverifiedError && (
-              <div className="mt-2 flex flex-wrap gap-3 text-xs font-medium">
-                <Link
-                  to="/verify-pending"
-                  state={{ email: getValues("email") }}
-                  className="underline underline-offset-2 hover:opacity-80"
-                >
-                  Verification instructions
-                </Link>
-                <Link
-                  to="/verify-email"
-                  className="underline underline-offset-2 hover:opacity-80"
-                >
-                  Enter verification token
-                </Link>
-              </div>
+              <>
+                <p className="mt-1">Check your inbox or spam folder for the verification email.</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs font-medium">
+                  <Link
+                    to="/verify-pending"
+                    state={{ email: getValues("email") }}
+                    className="underline underline-offset-2 hover:opacity-80"
+                  >
+                    Verification instructions
+                  </Link>
+                  <Link
+                    to="/verify-email"
+                    className="underline underline-offset-2 hover:opacity-80"
+                  >
+                    Enter verification token
+                  </Link>
+                </div>
+              </>
             )}
           </Alert>
         )}

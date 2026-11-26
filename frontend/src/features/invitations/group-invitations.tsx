@@ -55,13 +55,17 @@ export function GroupInvitations({ groupId, archived }: { groupId: string; archi
         {create.isError && <Alert variant="error">{getErrorMessage(create.error)}</Alert>}
         {create.isSuccess && (
           <Alert variant="success">
-            {create.data.data.invitedEmail ? "Invitation email queued." : "Invitation added to the recipient’s inbox."}
+            {create.data.data.invitedEmail
+              ? "Invitation email queued. If the recipient doesn’t see it, ask them to check their spam or junk folder."
+              : "Invitation added to the recipient’s inbox."}
           </Alert>
         )}
         {manage.isError && <Alert variant="error">{getErrorMessage(manage.error)}</Alert>}
         {manage.isSuccess && (
           <Alert variant="success">
-            {manage.variables.action === "resend" ? "A new invitation email was queued." : "Invitation revoked."}
+            {manage.variables.action === "resend"
+              ? "A new invitation email was queued. If the recipient doesn’t see it, ask them to check their spam or junk folder."
+              : "Invitation revoked."}
           </Alert>
         )}
         {invitations.isPending && <p role="status">Loading invitations…</p>}
